@@ -1,56 +1,51 @@
 # Loup-Garou API
 
-Back-end multijoueur r?alis? en bin?me pour un cours de d?veloppement d'API. Nom provisoire.
+Back-end multijoueur réalisé en binôme pour un cours de développement d'API. Nom provisoire.
 
-## ?tat du projet
+## état du projet
 
-Le socle technique est ex?cutable : Express, Socket.IO, validation de configuration, logs JSON, documentation OpenAPI, routes de sant?, tests et Docker.
-Les comptes, salons, r?les, votes, chats et statistiques ne sont pas encore impl?ment?s. Les connexions Socket.IO sont volontairement refus?es jusqu'? l'ajout des sessions et autorisations.
+Le socle technique est exécutable : Express, Socket.IO, validation de configuration, logs JSON, documentation OpenAPI, routes de santé, tests et Docker.
+Les comptes, salons, rôles, votes, chats et statistiques ne sont pas encore implémentés. Les connexions Socket.IO sont volontairement refusées jusqu'à l'ajout des sessions et autorisations.
 
 ## Stack
 
 TypeScript, Node.js 24 LTS, Express.js 5, PostgreSQL 16, Prisma 7, Redis 7 et Socket.IO 4.
-Zod valide les entr?es ; Vitest et Supertest v?rifient le socle.
+Zod valide les entrées ; Vitest et Supertest vérifient le socle.
 
-Pour la suite : sessions Redis avec cookie HttpOnly, Argon2id, cache, instrumentation OpenTelemetry/Jaeger et r?partition de charge entre plusieurs instances. Voir [l'architecture](docs/architecture.md).
+Pour la suite : sessions Redis avec cookie HttpOnly, Argon2id, cache, instrumentation OpenTelemetry/Jaeger et répartition de charge entre plusieurs instances. Voir [l'architecture](docs/architecture.md).
 
 ## Structure
 
 ```text
-.
-??? back/
-?   ??? src/
-?   ?   ??? config/
-?   ?   ??? http/
-?   ?   ??? infrastructure/
-?   ?   ??? modules/{accounts,lobbies,game,chat,statistics}/
-?   ?   ??? realtime/
-?   ?   ??? app.ts
-?   ?   ??? server.ts
-?   ??? prisma/
-?   ??? tests/
-?   ??? Dockerfile
-?   ??? package-lock.json
-??? front/                  # emplacement r?serv?, aucune interface impl?ment?e
-??? deploy/nginx/
-??? docs/
-??? load/
-??? .github/workflows/
-??? docker-compose.yml
-??? docker-compose.dev.yml
-??? .env.example
-??? deploy.md
-??? AGENTS.md
-??? CLAUDE.md
+project/
+|-- back/
+|   |-- src/{config,http,infrastructure,modules,realtime}/
+|   |-- src/app.ts
+|   |-- src/server.ts
+|   |-- prisma/
+|   |-- tests/
+|   |-- Dockerfile
+|   `-- package-lock.json
+|-- front/                  # réservé à une interface future
+|-- deploy/nginx/
+|-- docs/
+|-- load/
+|-- .github/workflows/
+|-- docker-compose.yml
+|-- docker-compose.dev.yml
+|-- .env.example
+|-- deploy.md
+|-- AGENTS.md
+`-- CLAUDE.md
 ```
 
 ## Lancement avec Docker
 
-Pr?requis : Git, Docker et Docker Compose v2 ou sup?rieur, moteur Docker d?marr?.
+Prérequis : Git, Docker et Docker Compose v2 ou supérieur, moteur Docker démarré.
 
 ```bash
 cp .env.example .env
-# Renseigner POSTGRES_PASSWORD (16 caract?res minimum), APP_ORIGIN et un port libre.
+# Renseigner POSTGRES_PASSWORD (16 caractères minimum), APP_ORIGIN et un port libre.
 docker compose up -d --build
 docker compose ps
 curl http://127.0.0.1:3009/api/health
@@ -59,18 +54,18 @@ curl http://127.0.0.1:3009/api/ready
 
 Sous PowerShell, copier avec `Copy-Item .env.example .env`. Les exemples utilisent le port 3009 ; l'adapter si `API_HOST_PORT` change.
 
-Pour un essai local, utiliser `APP_ORIGIN=http://localhost:3009`. En production, utiliser l'origine HTTPS de l'interface autoris?e.
-L'API est publi?e uniquement sur `127.0.0.1`. PostgreSQL et Redis n'ont aucun port publi? avec le Compose de production.
+Pour un essai local, utiliser `APP_ORIGIN=http://localhost:3009`. En production, utiliser l'origine HTTPS de l'interface autorisée.
+L'API est publiée uniquement sur `127.0.0.1`. PostgreSQL et Redis n'ont aucun port publié avec le Compose de production.
 
-- `GET /api/health` : vivacit? du processus HTTP, format HAL.
-- `GET /api/ready` : disponibilit? PostgreSQL/Redis ; renvoie 503 si une d?pendance ?choue.
+- `GET /api/health` : vivacité du processus HTTP, format HAL.
+- `GET /api/ready` : disponibilité PostgreSQL/Redis ; renvoie 503 si une dépendance échoue.
 - `/api/docs/` : Swagger UI.
 - `/api/openapi.json` : contrat OpenAPI.
-- `/socket.io/` : transport Socket.IO r?serv?, sans ?v?nements m?tier ni connexions authentifi?es ? ce stade.
+- `/socket.io/` : transport Socket.IO réservé, sans événements métier ni connexions authentifiées à ce stade.
 
-## D?veloppement sans reconstruire l'image
+## Développement sans reconstruire l'image
 
-Installer Node.js 24 (voir `back/.nvmrc`). Apr?s cr?ation de `.env`, d?marrer seulement les d?pendances :
+Installer Node.js 24 (voir `back/.nvmrc`). Après création de `.env`, démarrer seulement les dépendances :
 
 ```bash
 docker compose -f docker-compose.yml -f docker-compose.dev.yml up -d db redis
@@ -78,7 +73,7 @@ cd back
 npm ci
 ```
 
-Pour le serveur lanc? sur l'h?te, modifier dans `.env` :
+Pour le serveur lancé sur l'hôte, modifier dans `.env` :
 
 ```dotenv
 NODE_ENV=development
@@ -90,7 +85,7 @@ TRUST_PROXY_HOPS=0
 PORT=3009
 ```
 
-Les ports doivent correspondre ? `DEV_DB_PORT` et `DEV_REDIS_PORT`. Compose continue ? fournir ses propres h?tes internes ? l'API conteneuris?e.
+Les ports doivent correspondre à `DEV_DB_PORT` et `DEV_REDIS_PORT`. Compose continue à fournir ses propres hôtes internes à l'API conteneurisée.
 
 ```bash
 npm run dev
@@ -101,38 +96,38 @@ npm run build
 npm run prisma:validate
 ```
 
-`npm start` ex?cute le code compil? et attend les variables dans l'environnement. Pour charger le fichier racine lors d'un essai local : `node --env-file=../.env dist/server.js` depuis `back/`.
+`npm start` exécute le code compilé et attend les variables dans l'environnement. Pour charger le fichier racine lors d'un essai local : `node --env-file=../.env dist/server.js` depuis `back/`.
 
 ## Prisma
 
-Le sch?ma est pr?par? sans mod?les m?tier ni migration. Aucun client n'est encore g?n?r? ; la readiness utilise une requ?te SQL minimale.
-Apr?s validation du mod?le de donn?es : ajouter les mod?les, lancer `npm run prisma:generate`, puis `npm run db:migrate:dev -- --name initial` sur la base de d?veloppement.
-Int?grer alors la g?n?ration du client au build et son initialisation aux repositories. Versionner les migrations, jamais le client g?n?r?. En production, utiliser uniquement les migrations d?j? versionn?es ; voir `deploy.md`.
+Le schéma est préparé sans modèles métier ni migration. Aucun client n'est encore généré ; la readiness utilise une requête SQL minimale.
+Après validation du modèle de données : ajouter les modèles, lancer `npm run prisma:generate`, puis `npm run db:migrate:dev -- --name initial` sur la base de développement.
+Intégrer alors la génération du client au build et son initialisation aux repositories. Versionner les migrations, jamais le client généré. En production, utiliser uniquement les migrations déjà versionnées ; voir `deploy.md`.
 
-## Fonctionnalit?s pr?vues
+## Fonctionnalités prévues
 
-- Inscription, connexion et d?connexion.
-- Salons publics et priv?s par code ; lancement par le cr?ateur.
-- Attribution al?atoire confidentielle des r?les : villageois, loup-garou et voyante.
-- Alternance jour/nuit, actions nocturnes, votes, ?liminations et victoire automatique.
-- Historique, statistiques et trois canaux de chat en temps r?el par partie.
-- R?les exclusifs invent?s ult?rieurement ; pouvoirs ? d?finir.
+- Inscription, connexion et déconnexion.
+- Salons publics et privés par code ; lancement par le créateur.
+- Attribution aléatoire confidentielle des rôles : villageois, loup-garou et voyante.
+- Alternance jour/nuit, actions nocturnes, votes, éliminations et victoire automatique.
+- Historique, statistiques et trois canaux de chat en temps réel par partie.
+- Rôles exclusifs inventés ultérieurement ; pouvoirs à définir.
 
 | Joueur | Chat public de la partie | Chat des loups-garous | Chat des morts |
 | --- | --- | --- | --- |
 | Villageois vivant | Oui | Non | Non |
 | Voyante vivante | Oui | Non | Non |
 | Loup-garou vivant | Oui | Oui | Non |
-| Mort, quel que soit son r?le | Non | Non | Oui |
+| Mort, quel que soit son rôle | Non | Non | Oui |
 
-Ces acc?s s'appliquent ? tout moment, ind?pendamment du jour et de la nuit, ? la lecture, ? l'envoi et ? la r?ception. Un mort perd l'acc?s aux canaux des vivants.
+Ces accès s'appliquent à tout moment, indépendamment du jour et de la nuit, à la lecture, à l'envoi et à la réception. Un mort perd l'accès aux canaux des vivants.
 
-## Travail en bin?me et automatisation
+## Travail en binôme et automatisation
 
 Les consignes Codex/Claude sont dans `AGENTS.md` et `CLAUDE.md`, dont les contenus doivent rester identiques.
-Travailler par branches et pull requests. La CI v?rifie types, lint, tests, build, sch?ma Prisma, ?galit? des consignes, configuration Compose, construction de l'image et d?marrage avec PostgreSQL/Redis.
-Un tag `v*` d?clenche ?galement les v?rifications puis publie une image versionn?e dans GHCR. Aucun acc?s au VPS ni d?ploiement distant automatique n'est configur?.
+Travailler par branches et pull requests. La CI vérifie types, lint, tests, build, schéma Prisma, égalité des consignes, configuration Compose, construction de l'image et démarrage avec PostgreSQL/Redis.
+Un tag `v*` déclenche également les vérifications puis publie une image versionnée dans GHCR. Aucun accès au VPS ni déploiement distant automatique n'est configuré.
 
-Un premier sc?nario de charge HTTP est dans `load/health.js` : `k6 run load/health.js` contre une instance de test locale. Il ne couvre pas encore Socket.IO.
+Un premier scénario de charge HTTP est dans `load/health.js` : `k6 run load/health.js` contre une instance de test locale. Il ne couvre pas encore Socket.IO.
 
-Le [guide VPS](deploy.md) d?taille DNS Hostinger, Nginx, Certbot, mises ? jour et sauvegardes.
+Le [guide VPS](deploy.md) détaille DNS Hostinger, Nginx, Certbot, mises à jour et sauvegardes.

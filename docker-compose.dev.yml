@@ -1,5 +1,5 @@
-# ? utiliser uniquement en d?veloppement, jamais sur le VPS.
-# Permet aux outils Node lanc?s sur l'h?te d'acc?der ? PostgreSQL et Redis.
+# À utiliser uniquement en développement, jamais sur le VPS.
+# Permet aux outils Node lancés sur l'hôte d'accéder à PostgreSQL et Redis.
 services:
   db:
     ports:

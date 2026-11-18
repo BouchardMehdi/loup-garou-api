@@ -8,35 +8,35 @@ flowchart LR
     API --> Redis[(Redis)]
 ```
 
-Le port h?te est configurable. PostgreSQL et Redis sont sur un r?seau Docker interne, sans ports publi?s dans la configuration de production.
+Le port hôte est configurable. PostgreSQL et Redis sont sur un réseau Docker interne, sans ports publiés dans la configuration de production.
 
 ## Organisation du back-end
 
 - `src/app.ts` : application HTTP sans ouverture de port, testable avec Supertest.
-- `src/server.ts` : d?marrage, connexions aux d?pendances et arr?t gracieux.
+- `src/server.ts` : démarrage, connexions aux dépendances et arrêt gracieux.
 - `src/config/` : validation de configuration et construction des URL sans journaliser les secrets.
 - `src/http/` : contrat OpenAPI initial.
-- `src/infrastructure/` : connexions PostgreSQL/Redis, actuellement utilis?es pour la readiness.
-- `src/realtime/` : serveur Socket.IO ; connexions refus?es tant que l'authentification n'est pas impl?ment?e.
-- `src/modules/` : comptes, salons, moteur de jeu, chat et statistiques, encore non impl?ment?s.
-- `prisma/` : sch?ma vide et emplacement des migrations. Ajouter les mod?les apr?s validation ; les repositories m?tier utiliseront Prisma.
+- `src/infrastructure/` : connexions PostgreSQL/Redis, actuellement utilisées pour la readiness.
+- `src/realtime/` : serveur Socket.IO ; connexions refusées tant que l'authentification n'est pas implémentée.
+- `src/modules/` : comptes, salons, moteur de jeu, chat et statistiques, encore non implémentés.
+- `prisma/` : schéma vide et emplacement des migrations. Ajouter les modèles après validation ; les repositories métier utiliseront Prisma.
 
-## ?tapes suivantes
+## étapes suivantes
 
-Sessions Redis, Argon2id, protection CSRF et limitation des requ?tes seront ajout?s avec les comptes et actions m?tier. Aucun endpoint m?tier n'est expos? actuellement.
+Sessions Redis, Argon2id, protection CSRF et limitation des requêtes seront ajoutés avec les comptes et actions métier. Aucun endpoint métier n'est exposé actuellement.
 
-L'instrumentation OpenTelemetry/Jaeger, l'adaptateur Redis Socket.IO et le d?ploiement de plusieurs instances restent ? impl?menter. La configuration actuelle lance une seule instance : Nginx agit comme reverse proxy, sans r?partition effective entre plusieurs serveurs. Le load balancing demand? dans le cours n?cessitera une ?tape d?di?e.
+L'instrumentation OpenTelemetry/Jaeger, l'adaptateur Redis Socket.IO et le déploiement de plusieurs instances restent à implémenter. La configuration actuelle lance une seule instance : Nginx agit comme reverse proxy, sans répartition effective entre plusieurs serveurs. Le load balancing demandé dans le cours nécessitera une étape dédiée.
 
-Les tests Vitest v?rifient le socle sans vraie base de donn?es. La CI pr?voit un d?marrage Docker avec PostgreSQL/Redis et une v?rification de readiness. Pr?voir des tests d'int?gration m?tier lors de l'ajout des repositories.
+Les tests Vitest vérifient le socle sans vraie base de données. La CI prévoit un démarrage Docker avec PostgreSQL/Redis et une vérification de readiness. Prévoir des tests d'intégration métier lors de l'ajout des repositories.
 
-## Audit initial des d?pendances
+## Audit initial des dépendances
 
-Au 18 novembre 2026, `npm audit` signale une vuln?rabilit? ReDoS de `picomatch` (GHSA-fc5q-39xc-vjpf), propag?e par les outils de d?veloppement Vitest/Vite et typescript-eslint. Le registre consult? ne propose pas de version corrig?e : la derni?re version publi?e est 4.0.7, incluse dans la plage affect?e. Ne pas appliquer de r?trogradation automatique forc?e ; suivre la publication du correctif et relancer les tests apr?s mise ? jour.
+Au 18 novembre 2026, `npm audit` signale une vulnérabilité ReDoS de `picomatch` (GHSA-fc5q-39xc-vjpf), propagée par les outils de développement Vitest/Vite et typescript-eslint. Le registre consulté ne propose pas de version corrigée : la dernière version publiée est 4.0.7, incluse dans la plage affectée. Ne pas appliquer de rétrogradation automatique forcée ; suivre la publication du correctif et relancer les tests après mise à jour.
 
-Ces d?pendances ne sont pas install?es dans l'image runtime (`npm ci --omit=dev`). L'audit de production doit ?tre v?rifi? s?par?ment avec `npm audit --omit=dev`. Ne pas exposer de serveur de tests ou d'outillage de d?veloppement sur le VPS.
+Ces dépendances ne sont pas installées dans l'image runtime (`npm ci --omit=dev`). L'audit de production doit être vérifié séparément avec `npm audit --omit=dev`. Ne pas exposer de serveur de tests ou d'outillage de développement sur le VPS.
 
-## V?rifications du socle en local
+## Vérifications du socle en local
 
-Types, lint, huit tests, compilation et validation Prisma v?rifi?s. Les configurations Compose de production et de d?veloppement sont valides. L'audit des d?pendances de production ne signale aucune vuln?rabilit? au 18 novembre 2026.
+Types, lint, huit tests, compilation et validation Prisma vérifiés. Les configurations Compose de production et de développement sont valides. L'audit des dépendances de production ne signale aucune vulnérabilité au 18 novembre 2026.
 
-La construction et le d?marrage Docker n'ont pas pu ?tre v?rifi?s sur la machine de pr?paration : le moteur Docker Desktop Linux ?tait arr?t?. Le workflow CI contient ces v?rifications ; leur r?sultat ne sera connu qu'apr?s son ex?cution sur GitHub.
+La construction et le démarrage Docker n'ont pas pu être vérifiés sur la machine de préparation : le moteur Docker Desktop Linux était arrêté. Le workflow CI contient ces vérifications ; leur résultat ne sera connu qu'après son exécution sur GitHub.

@@ -1,4 +1,4 @@
 # Module `chat`
 
-Emplacement r?serv?. Aucune fonctionnalit? m?tier impl?ment?e.
-S?parer les adaptateurs HTTP/Socket.IO, services m?tier et repositories lors de son d?veloppement.
+Emplacement réservé. Aucune fonctionnalité métier implémentée.
+Séparer les adaptateurs HTTP/Socket.IO, services métier et repositories lors de son développement.

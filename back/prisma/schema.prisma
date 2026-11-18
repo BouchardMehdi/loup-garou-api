@@ -7,5 +7,5 @@ datasource db {
   provider = "postgresql"
 }
 
-// Ajouter les mod?les m?tier apr?s validation du mod?le de donn?es.
-// Aucun mod?le ni migration artificiels dans le socle initial.
+// Ajouter les modèles métier après validation du modèle de données.
+// Aucun modèle ni migration artificiels dans le socle initial.
