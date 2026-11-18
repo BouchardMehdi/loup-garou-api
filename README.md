@@ -1,4 +1,4 @@
-# Clair de Meute
+# Loup-Garou API
 
 Projet de cours : back-end d'un jeu de Loup-Garou multijoueur.
 
