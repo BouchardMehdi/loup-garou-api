@@ -1,0 +1,9 @@
+# ? utiliser uniquement en d?veloppement, jamais sur le VPS.
+# Permet aux outils Node lanc?s sur l'h?te d'acc?der ? PostgreSQL et Redis.
+services:
+  db:
+    ports:
+      - "127.0.0.1:${DEV_DB_PORT:-5439}:5432"
+  redis:
+    ports:
+      - "127.0.0.1:${DEV_REDIS_PORT:-6389}:6379"

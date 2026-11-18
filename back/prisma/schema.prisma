@@ -1,0 +1,11 @@
+generator client {
+  provider = "prisma-client"
+  output   = "../src/generated/prisma"
+}
+
+datasource db {
+  provider = "postgresql"
+}
+
+// Ajouter les mod?les m?tier apr?s validation du mod?le de donn?es.
+// Aucun mod?le ni migration artificiels dans le socle initial.

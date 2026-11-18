@@ -1,0 +1,95 @@
+name: ${COMPOSE_PROJECT_NAME:-loup-garou-api}
+
+x-backend-environment: &backend-environment
+  NODE_ENV: ${NODE_ENV:-production}
+  HOST: 0.0.0.0
+  PORT: 3000
+  APP_ORIGIN: ${APP_ORIGIN:?Define APP_ORIGIN in .env}
+  LOG_LEVEL: ${LOG_LEVEL:-info}
+  TRUST_PROXY_HOPS: ${TRUST_PROXY_HOPS:-1}
+  POSTGRES_HOST: db
+  POSTGRES_PORT: 5432
+  POSTGRES_DB: ${POSTGRES_DB:-loup_garou}
+  POSTGRES_USER: ${POSTGRES_USER:-loup_garou}
+  POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:?Define POSTGRES_PASSWORD in .env}
+  REDIS_URL: redis://redis:6379
+
+services:
+  api:
+    image: loup-garou-api-back:${IMAGE_TAG:-local}
+    build:
+      context: ./back
+      target: runtime
+    environment: *backend-environment
+    init: true
+    restart: unless-stopped
+    stop_grace_period: 15s
+    ports:
+      - "127.0.0.1:${API_HOST_PORT:-3009}:3000"
+    depends_on:
+      db:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+    networks: [default, data]
+    healthcheck:
+      test: ["CMD", "node", "-e", "fetch('http://127.0.0.1:3000/api/ready').then(r=>process.exit(r.ok?0:1)).catch(()=>process.exit(1))"]
+      interval: 30s
+      timeout: 10s
+      start_period: 20s
+      retries: 3
+    logging:
+      driver: json-file
+      options:
+        max-size: "10m"
+        max-file: "3"
+
+  db:
+    image: postgres:16-alpine
+    environment:
+      POSTGRES_DB: ${POSTGRES_DB:-loup_garou}
+      POSTGRES_USER: ${POSTGRES_USER:-loup_garou}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:?Define POSTGRES_PASSWORD in .env}
+    restart: unless-stopped
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+    networks: [data]
+    healthcheck:
+      test: ["CMD-SHELL", 'pg_isready -U "$$POSTGRES_USER" -d "$$POSTGRES_DB"']
+      interval: 5s
+      timeout: 5s
+      retries: 10
+
+  redis:
+    image: redis:7-alpine
+    command: ["redis-server", "--appendonly", "yes"]
+    restart: unless-stopped
+    volumes:
+      - redis_data:/data
+    networks: [data]
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 5s
+      timeout: 3s
+      retries: 10
+
+  # Outil ponctuel pour les futures migrations ; pas de service permanent.
+  migrate:
+    profiles: [tools]
+    build:
+      context: ./back
+      target: build
+    environment: *backend-environment
+    command: ["npm", "run", "db:migrate:deploy"]
+    networks: [data]
+    depends_on:
+      db:
+        condition: service_healthy
+
+networks:
+  data:
+    internal: true
+
+volumes:
+  postgres_data:
+  redis_data:
