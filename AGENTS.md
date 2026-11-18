@@ -14,8 +14,8 @@ Ce document s'adresse à Codex et à Claude Code. Le projet est réalisé en bin
 ## État et périmètre
 
 - Nom provisoire : Loup-Garou API. Dépôt GitHub : `BouchardMehdi/loup-garou-api`.
-- Le dépôt contient actuellement le cadrage ; aucun serveur, script de lancement ou environnement applicatif n'est encore implémenté.
-- La stack ci-dessous est validée. Les commandes et versions exactes seront documentées une fois l'environnement créé.
+- Le socle Express/TypeScript, routes de santé, Socket.IO, tests et Docker est présent. Les fonctionnalités métier restent à implémenter.
+- La stack ci-dessous est validée. Consulter back/package.json, le README et deploy.md pour les versions, commandes et procédures disponibles.
 - Ne pas démarrer une nouvelle étape de développement sur la seule base de ce document : respecter la demande en cours.
 - Communiquer et écrire la documentation en français. Utiliser l'anglais pour les identifiants de code et des noms cohérents dans l'API.
 
@@ -97,6 +97,22 @@ Les accès sont indépendants de la phase jour/nuit. Le chat public est commun a
 - La CI doit progressivement vérifier le code et les tests avant construction et publication des images versionnées.
 - Distinguer clairement ce qui est réalisé, testé, prévu ou bloqué dans le compte rendu.
 
+## Structure et déploiement VPS
+
+- `back/` contient le serveur ; `front/` est réservé à une interface future sans framework choisi.
+- Depuis `back/` : `npm ci`, `npm run typecheck`, `npm run lint`, `npm test`, `npm run build`, `npm run prisma:validate`.
+- Prisma est configuré sans modèles ni client généré. Ajouter génération et repositories avec le modèle de données validé.
+- Infrastructure : VPS Linux, Nginx et Certbot sur l'hôte ; API, PostgreSQL et Redis dans Docker Compose. DNS des sous-domaines chez Hostinger ; site principal conservé chez Hostinger.
+- Conserver à la racine `docker-compose.yml`, `.env.example`, `README.md` et `deploy.md`, à actualiser avec chaque nouvelle variable ou étape d'exploitation.
+- Lancement : `docker compose up -d --build` après configuration de `.env`. Ne pas utiliser le Compose de développement sur le VPS.
+- Publier les ports applicatifs uniquement sur `127.0.0.1`, avec un port distinct des autres projets. Aucun port de base de données publié en production.
+- Le port 3009 et `loup-garou.bouchard-mehdi.fr` sont des exemples à vérifier, sans port réservé ni DNS créé.
+- Nginx transmet `/api/` et `/socket.io/`, avec upgrade WebSocket et en-têtes du proxy. Préserver les modifications TLS de Certbot.
+- Conserver les volumes PostgreSQL/Redis. Pour les mises à jour habituelles : `git pull --ff-only` puis `docker compose up -d --build`, sans `docker compose down` ni suppression de volumes.
+- Prévoir sauvegarde et migration contrôlée lors des futures évolutions de schéma. Les secrets restent hors Git.
+- Le socle n'est pas jouable : comptes, sessions, règles du jeu et chats restent à développer. OpenTelemetry/Jaeger, plusieurs instances et déploiement sans interruption restent à intégrer.
+- Aucun déploiement distant autorisé par ces seules consignes : suivre la demande de l'utilisateur.
+
 ## Décisions encore ouvertes
 
 - Nombre de joueurs, répartition des rôles et conditions exactes de victoire.
@@ -105,11 +121,17 @@ Les accès sont indépendants de la phase jour/nuit. Le chat public est commun a
 - Sélection des rôles activés par le créateur du salon : proposition à valider.
 - Accès aux messages avant/après la partie, spectateurs et durée de conservation.
 - Modèle de données, contrat précis des routes et événements, statistiques conservées.
-- Hébergement, gestion des migrations au déploiement et durée des sessions.
+- Durée des sessions et politique de migrations compatibles lors des futures livraisons.
 
 Ne pas présenter ces points comme déjà décidés. Demander une précision lorsqu'une décision conditionne le comportement à implémenter ; poursuivre les travaux indépendants utiles.
 
 ## Commentaires de suivi et évolutions futures
+
+<!--
+2026-11-18 | IMPLÉMENTÉ | Socle et cible VPS
+Structure back-end, Docker Compose, modèle Nginx avec Socket.IO, CI et guide VPS créés. Infrastructure validée par l'utilisateur. Aucun déploiement distant effectué. Construction Docker locale à vérifier lorsque le moteur sera démarré.
+-->
+
 
 <!--
 2026-11-18 | VALIDÉ | Socle du projet

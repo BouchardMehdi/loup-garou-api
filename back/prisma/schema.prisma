@@ -1,0 +1,11 @@
+generator client {
+  provider = "prisma-client"
+  output   = "../src/generated/prisma"
+}
+
+datasource db {
+  provider = "postgresql"
+}
+
+// Ajouter les modèles métier après validation du modèle de données.
+// Aucun modèle ni migration artificiels dans le socle initial.
