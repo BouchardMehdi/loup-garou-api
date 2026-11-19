@@ -9,6 +9,11 @@ COPY prisma ./prisma
 COPY prisma.config.ts ./
 RUN npm run build
 
+FROM build AS test
+COPY tests ./tests
+COPY vitest.integration.config.ts ./
+CMD ["npm", "run", "test:integration"]
+
 FROM node:24-bookworm-slim AS runtime
 ENV NODE_ENV=production
 WORKDIR /app

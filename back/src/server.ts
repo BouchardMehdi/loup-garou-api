@@ -1,5 +1,11 @@
 import { createServer } from 'node:http';
 import pino from 'pino';
+import { RedisStore } from 'connect-redis';
+import { PrismaPg } from '@prisma/adapter-pg';
+import { PrismaClient } from './generated/prisma/client.js';
+import { prismaUsers, argonPasswords } from './modules/accounts/infrastructure.js';
+import { AccountService } from './modules/accounts/service.js';
+import { redisLimiter } from './http/rate-limit.js';
 import { createApp } from './app.js';
 import { loadConfig } from './config/env.js';
 import { createDependencies } from './infrastructure/dependencies.js';
@@ -11,7 +17,16 @@ const deps = createDependencies(process.env, config.REDIS_URL);
 // No connection strings, request headers, bodies or secret roles in logs.
 deps.redis.on('error', () => { logger.error('Redis connection error'); });
 deps.pool.on('error', () => { logger.error('PostgreSQL pool error'); });
-const app = createApp({ origin: config.APP_ORIGIN, trustProxyHops: config.TRUST_PROXY_HOPS, checks: deps.checks });
+await deps.redis.connect();
+const prisma = new PrismaClient({ adapter: new PrismaPg(deps.pool) });
+const service = await AccountService.create(prismaUsers(prisma), argonPasswords);
+const app = createApp({ origin: config.APP_ORIGIN, trustProxyHops: config.TRUST_PROXY_HOPS,
+  nodeEnv: config.NODE_ENV, checks: deps.checks, onError: () => { logger.error('Unhandled HTTP error'); },
+  accounts: { service, sessionStore: new RedisStore({ client: deps.redis, prefix: 'loup:session:', disableTouch: true }),
+    limiter: redisLimiter(deps.redis), secret: config.SESSION_SECRET,
+    secureCookies: config.NODE_ENV === 'production', sameSite: config.SESSION_SAME_SITE,
+    ttlSeconds: config.SESSION_TTL_SECONDS, origin: config.APP_ORIGIN },
+});
 const http = createServer(app);
 const io = createRealtimeServer(http, config.APP_ORIGIN);
 http.on('request', (req, res) => {
@@ -21,7 +36,6 @@ http.on('request', (req, res) => {
       durationMs: Math.round(performance.now() - start) }, 'HTTP request');
   });
 });
-await deps.redis.connect();
 http.listen(config.PORT, config.HOST, () => { logger.info({ port: config.PORT }, 'API listening'); });
 http.on('error', () => { logger.fatal('HTTP server failed'); process.exit(1); });
 let stopping = false;
@@ -32,7 +46,7 @@ function shutdown() {
   const timer = setTimeout(() => { process.exit(1); }, 10_000);
   timer.unref();
   io.close(() => {
-    void Promise.allSettled([deps.pool.end(), deps.redis.close()]).then(() => {
+    void prisma.$disconnect().then(() => Promise.allSettled([deps.pool.end(), deps.redis.close()])).then(() => {
       clearTimeout(timer);
       process.exit(0);
     });

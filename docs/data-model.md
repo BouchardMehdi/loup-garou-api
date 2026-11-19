@@ -1,6 +1,6 @@
 # Modèle conceptuel de données — première version
 
-Statut : conception cible, non implémentée. Le schéma Prisma demeure vide dans cette branche. Ce document décrit des entités, attributs métier et cardinalités ; les types SQL, index et migrations seront conçus lors de l'implémentation.
+Statut : conception cible, partiellement implémentée pour USER. Le modèle USER est désormais traduit dans Prisma avec sa migration ; les autres entités restent à implémenter. Le champ technique usernameKey assure l’unicité insensible à la casse et n’est pas exposé par l’API. Ce document décrit des entités, attributs métier et cardinalités ; les types SQL, index et migrations seront conçus lors de l'implémentation.
 
 Référence : [spécifications](specifications.md).
 

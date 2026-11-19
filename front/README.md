@@ -1,4 +1,5 @@
-# Interface future
+# Front-end géré séparément
 
-Emplacement réservé à une éventuelle interface de démonstration. Aucun framework ni serveur front-end choisi ou implémenté.
-Le déploiement actuel concerne uniquement l'API ; aucun port front-end n'est publié.
+Le collègue développe le front ; cette branche concerne uniquement le back-end et n'ajoute aucune application dans ce dossier.
+
+Le [contrat d'authentification](../docs/authentication.md) décrit les routes, cookies, jetons CSRF et exemples fetch nécessaires à l'intégration. Aucune technologie de front n'est imposée par l'API.

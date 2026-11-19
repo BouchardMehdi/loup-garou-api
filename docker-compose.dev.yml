@@ -7,3 +7,9 @@ services:
   redis:
     ports:
       - "127.0.0.1:${DEV_REDIS_PORT:-6389}:6379"
+
+# Autorise les accès via les seuls ports localhost ci-dessus.
+# Le réseau de production reste interne dans docker-compose.yml.
+networks:
+  data:
+    internal: false
