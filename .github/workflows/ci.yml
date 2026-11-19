@@ -13,6 +13,8 @@ jobs:
       APP_ORIGIN: http://localhost:3009
       POSTGRES_PASSWORD: ci-validation-only-not-a-production-secret
       IMAGE_TAG: ci
+      NODE_ENV: development
+      SESSION_SECRET: ci-only-session-secret-never-use-in-production
     defaults:
       run:
         working-directory: back
@@ -35,15 +37,22 @@ jobs:
         run: cmp AGENTS.md CLAUDE.md
       - name: Validate Compose
         working-directory: .
-        run: docker compose --profile tools config --quiet
+        run: docker compose --profile test config --quiet
       - name: Build production image
         working-directory: .
-        run: docker compose build api
+        run: docker compose --profile test build api migrate integration
       - name: Smoke test with PostgreSQL and Redis
         working-directory: .
         run: |
           docker compose up -d --no-build --wait --wait-timeout 120
           curl --fail http://127.0.0.1:3009/api/ready
+      - name: Test accounts with real PostgreSQL and Redis
+        working-directory: .
+        run: |
+          docker compose exec -T api node --input-type=module < back/tests/smoke/auth.mjs
+      - name: Integration tests inside Docker
+        working-directory: .
+        run: docker compose --profile test run --rm integration
       - name: Container logs
         if: failure()
         working-directory: .

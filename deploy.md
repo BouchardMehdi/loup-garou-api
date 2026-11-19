@@ -41,12 +41,14 @@ Le dépôt est public : le clonage HTTPS en lecture ne nécessite pas d'authenti
 
 Modifier `.env` avec un éditeur et renseigner :
 
-- `POSTGRES_PASSWORD` : le secret généré, au moins 16 caractères.
+- `POSTGRES_PASSWORD` : un secret généré, au moins 16 caractères.
+- `SESSION_SECRET` : un autre secret aléatoire généré avec `openssl rand -hex 32`, au moins 32 caractères. Ne jamais réutiliser le mot de passe PostgreSQL.
+- `SESSION_TTL_SECONDS=28800` et `SESSION_SAME_SITE=lax` : expiration absolue et politique du cookie ; voir le [contrat des comptes](docs/authentication.md).
 - `APP_ORIGIN=https://loup-garou.bouchard-mehdi.fr` : origine autorisée du client ; adapter si une interface distincte est ajoutée.
 - `API_HOST_PORT=3009` : port libre choisi pour ce projet.
 - `NODE_ENV=production`, `TRUST_PROXY_HOPS=1` et un `COMPOSE_PROJECT_NAME` unique et stable.
 
-Conserver `POSTGRES_HOST=db`, `POSTGRES_PORT=5432` et `REDIS_URL=redis://redis:6379` pour Docker. Les identifiants ne sont pas des secrets par défaut et doivent être fournis par l'exploitant. Les futures variables de session seront documentées avec l'authentification ; aucun JWT_SECRET n'est utilisé actuellement.
+Conserver `POSTGRES_HOST=db`, `POSTGRES_PORT=5432` et `REDIS_URL=redis://redis:6379` pour Docker. Les identifiants ne sont pas des secrets par défaut et doivent être fournis par l'exploitant. Les sessions utilisent Redis et SESSION_SECRET ; aucun JWT_SECRET n’est utilisé.
 
 ## 3. Construire et lancer
 
@@ -59,7 +61,7 @@ curl --fail http://127.0.0.1:3009/api/health
 curl --fail http://127.0.0.1:3009/api/ready
 ```
 
-L'API attend les contrôles de santé des bases. Aucun port PostgreSQL ou Redis n'est publié ; ne pas utiliser `docker-compose.dev.yml` sur le VPS. Les données sont conservées dans les volumes nommés propres au projet.
+Compose attend les contrôles de santé des bases, applique les migrations versionnées via le service `migrate`, puis démarre l’API uniquement si la migration réussit. Aucun port PostgreSQL ou Redis n'est publié ; ne pas utiliser `docker-compose.dev.yml` sur le VPS. Les données sont conservées dans les volumes nommés propres au projet.
 
 `health` vérifie HTTP ; `ready` vérifie les deux dépendances. Docker marque le conteneur unhealthy en cas de panne mais ne le redémarre pas automatiquement pour ce seul motif ; prévoir une supervision externe. `restart: unless-stopped` couvre l'arrêt du processus et les redémarrages du VPS.
 
@@ -123,17 +125,21 @@ curl --fail http://127.0.0.1:3009/api/ready
 
 Ne pas exécuter `docker compose down` pour une mise à jour habituelle. Ne pas supprimer les volumes. Une seule instance est prévue à ce stade : une recréation peut interrompre brièvement le service et les connexions temps réel. Le déploiement sans interruption et le load balancing restent à développer pour le cours.
 
-### Quand les premières migrations seront ajoutées
+### Migrations de base de données
 
-Le socle ne comporte aucune table métier ni migration. Dès leur ajout, les livraisons avec modification de schéma devront faire l'objet d'une sauvegarde préalable puis utiliser :
+La migration initiale crée les comptes utilisateurs. `docker compose up -d --build` reconstruit l’API et l’outil de migration ; le service ponctuel `migrate` exécute `prisma migrate deploy` avant le démarrage de l’API. Une base neuve est initialisée et une base déjà à jour ne rejoue pas les migrations appliquées.
+
+Sauvegarder avant toute évolution de schéma. Pour une livraison nécessitant un contrôle séparé :
 
 ```bash
-docker compose --profile tools build api migrate
-docker compose --profile tools run --rm migrate
-docker compose up -d --no-build api
+docker compose build api migrate
+docker compose run --rm migrate
+# Seulement après succès :
+docker compose up -d --no-build
 ```
 
-Le service ponctuel `migrate` utilise l'image de build, contenant la CLI Prisma et les migrations versionnées. Ne jamais utiliser `migrate dev` ni `db push` en production. Si une migration échoue, arrêter la procédure et examiner l'état avant de remplacer l'API. Prévoir des migrations compatibles avec l'ancienne version pendant le déploiement.
+Ne jamais utiliser `migrate dev` ni `db push` en production. Si une migration échoue, arrêter la procédure et examiner l'état avant de remplacer l'API. Prévoir des migrations compatibles avec l'ancienne version pendant le déploiement. La migration ne réinitialise pas les volumes.
+
 
 ## 7. Sauvegardes et retour arrière
 
@@ -153,5 +159,7 @@ Pour revenir à une version précédente, utiliser une référence Git de livrai
 ## 8. Images versionnées et prochaines étapes
 
 Le workflow `image.yml` teste puis publie une image `ghcr.io/bouchardmehdi/loup-garou-api:vX.Y.Z` quand un tag correspondant est poussé. Le Compose actuel construit localement ; le déploiement depuis GHCR reste une évolution et nécessite un accès de lecture au registre pour une image privée.
+
+Les cookies sont Secure en production : le front doit appeler l’API en HTTPS et utiliser `credentials: include`. Nginx transmet déjà `X-Forwarded-Proto` ; `TRUST_PROXY_HOPS=1` correspond à cet unique proxy. Ne pas activer le mode développement sur le VPS pour contourner un problème de cookie.
 
 Aucun déploiement automatique, secret VPS, utilisateur distant ni connexion SSH n'est configuré par ces fichiers. OpenTelemetry/Jaeger et la supervision distante restent à intégrer.

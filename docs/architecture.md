@@ -42,17 +42,17 @@ La cible est le VPS de l'école, confirmé par le propriétaire. Le port hôte e
 - `src/infrastructure/` : connexions PostgreSQL/Redis, actuellement utilisées pour la readiness.
 - `src/realtime/` : serveur Socket.IO ; connexions refusées tant que l'authentification n'est pas implémentée.
 - `src/modules/` : comptes, salons, moteur de jeu, chat et statistiques, encore non implémentés.
-- `prisma/` : schéma vide et emplacement des migrations. Ajouter les modèles après validation ; les repositories métier utiliseront Prisma.
+- `prisma/` : modèle User et première migration ; le repository des comptes utilise Prisma. Les modèles de jeu restent à ajouter.
 
 ## Étapes suivantes
 
 Documents de conception : [spécifications](specifications.md), [MCD](data-model.md), [contrats préliminaires](interfaces.md) et [suivi des exigences](requirements.md).
 
-Sessions Redis, Argon2id, protection CSRF et limitation des requêtes seront ajoutés avec les comptes et actions métier. Aucun endpoint métier n'est exposé actuellement.
+Les comptes sont livrés avec sessions Redis, Argon2id, protection CSRF et limitation des requêtes : voir le [contrat pour le front](authentication.md). Le front est réalisé séparément par le collègue ; aucune application front n’est ajoutée ici. Les règles et canaux du jeu restent à développer, et Socket.IO reste fermé aux connexions applicatives.
 
 L'instrumentation OpenTelemetry/Jaeger, l'adaptateur Redis Socket.IO et le déploiement de plusieurs instances restent à implémenter. La configuration actuelle lance une seule instance : Nginx agit comme reverse proxy, sans répartition effective entre plusieurs serveurs. Le load balancing demandé dans le cours nécessitera une étape dédiée.
 
-Les tests Vitest vérifient le socle sans vraie base de données. La CI prévoit un démarrage Docker avec PostgreSQL/Redis et une vérification de readiness. Prévoir des tests d'intégration métier lors de l'ajout des repositories.
+Les tests unitaires vérifient le socle et les comptes sans base réelle. Deux tests d’intégration dans le profil Docker `test` vérifient les repositories, les sessions et le compteur Redis. Le smoke test HTTP de la CI exerce le parcours complet dans le conteneur API. Les modules de jeu nécessiteront leurs propres tests.
 
 ## Audit initial des dépendances
 
@@ -68,6 +68,18 @@ La construction et le démarrage Docker n'ont pas pu être vérifiés sur la mac
 
 ## Séparation du domaine prévue
 
-Les modules métier contiendront des règles et cas d'usage indépendants d'Express, Socket.IO et Prisma. Les adaptateurs HTTP et temps réel appelleront ces cas d'usage avec une identité déjà vérifiée, et les repositories implémenteront les ports de persistance. Le domaine décide de l'action permise et de la projection destinée à chaque joueur ; les transports ne recalculent pas les règles.
+Les modules métier contiendront des règles et cas d'usage indépendants d'Express, Socket.IO et Prisma. Les adaptateurs HTTP et temps réel appelleront ces cas d'usage avec une identité déjà vérifiée, et les repositories implémenteront les ports de persistance. Le domaine des futurs modules de jeu décidera de l’action permise et de la projection destinée à chaque joueur ; les transports ne recalculent pas les règles.
 
-Les chronomètres serveur déclencheront les mêmes cas d'usage de résolution que la fin anticipée. État de phase et décisions seront persistés pour une résolution unique et une reprise après incident. Cette organisation est une cible à implémenter, pas du code existant.
+Les chronomètres serveur déclencheront les mêmes cas d'usage de résolution que la fin anticipée. État de phase et décisions seront persistés pour une résolution unique et une reprise après incident. Le module comptes sépare déjà ports et service des adaptateurs Express/Prisma ; la reprise des phases reste une cible à implémenter.
+
+## Vérification du lot comptes — 19 novembre 2026
+
+- 19 tests unitaires réussis, incluant Argon2id, CSRF, cookies Secure, expiration absolue, rotation et déconnexion.
+- Deux tests d'intégration réussis depuis un conteneur de test contre PostgreSQL 16 et Redis 7 réels.
+- Images runtime, migration et test construites ; API healthy après application de la migration ; smoke test HTTP complet réussi.
+- Réexécution de `migrate deploy` sans migration en attente, puis suppression des seuls conteneurs/volumes éphémères de vérification.
+- Types, lint, compilation et audit npm vérifiés ; aucune vulnérabilité signalée par l'audit actuel, contrairement au constat historique du 18 novembre ci-dessus.
+
+Le premier essai des tests d'intégration depuis Windows n'a pas pu joindre les bases publiées sur des ports temporaires ; la vérification réussie et reproductible est désormais exécutée sur le réseau Docker. Le fichier Compose de développement permet aussi l'accès local aux bases avec un réseau non interne, tout en gardant les ports liés à localhost. Cette exception ne s'applique pas à la production.
+
+Aucune vérification de production distante ni résultat de CI GitHub n'est déduit de ces tests locaux.

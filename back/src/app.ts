@@ -3,10 +3,14 @@ import helmet from 'helmet';
 import cors from 'cors';
 import swaggerUi from 'swagger-ui-express';
 import type { DependencyChecks } from './infrastructure/dependencies.js';
+import { accountRouter, type AccountHttpOptions } from './modules/accounts/http.js';
+import { AccountError } from './modules/accounts/domain.js';
+import { HttpError } from './http/errors.js';
 import { openApiDocument } from './http/openapi.js';
 
 export function createApp(options: {
   origin: string; trustProxyHops: number; checks: DependencyChecks;
+  accounts?: AccountHttpOptions; nodeEnv?: string; onError?: () => void;
 }) {
   const app = express();
   app.disable('x-powered-by');
@@ -30,10 +34,23 @@ export function createApp(options: {
   });
   app.get('/api/openapi.json', (_req, res) => { res.json(openApiDocument); });
   app.use('/api/docs', swaggerUi.serve, swaggerUi.setup(openApiDocument));
+  if (options.nodeEnv === 'development') app.use('/doc', swaggerUi.serve, swaggerUi.setup(openApiDocument));
+  if (options.accounts) app.use('/api', accountRouter(options.accounts));
   app.use((_req, res) => { res.status(404).json({ error: 'Not found' }); });
   const errorHandler: ErrorRequestHandler = (error: unknown, _req, res, _next) => {
+    if (error instanceof AccountError) {
+      const duplicate = error.code === 'ACCOUNT_EXISTS';
+      res.status(duplicate ? 409 : 401).json({ code: error.code,
+        error: duplicate ? 'An account with these details already exists' : 'Invalid email or password' });
+      return;
+    }
+    if (error instanceof HttpError) {
+      res.status(error.status).json({ code: error.code, error: error.message });
+      return;
+    }
     const status = error instanceof SyntaxError ? 400 :
       typeof error === 'object' && error !== null && 'status' in error && error.status === 413 ? 413 : 500;
+    if (status === 500) options.onError?.();
     res.status(status).json({ error: status === 400 ? 'Invalid JSON' : status === 413 ? 'Payload too large' : 'Internal server error' });
   };
   app.use(errorHandler);
