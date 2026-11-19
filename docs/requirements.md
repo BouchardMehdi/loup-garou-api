@@ -15,10 +15,10 @@ Légende : **présent** = fichier ou socle disponible ; **conçu** = documenté 
 | Hiérarchie de ressources et HAL ou JSON-LD/Hydra | HAL présent sur la santé ; métier conçu | `_links`, `_embedded`, navigabilité et projections protégées |
 | Collection paginée | Conçue : salons, historique, messages et statistiques | Pages et liens testés, bornes et ordre stable |
 | WebSocket/SSE ou RPC | Transport Socket.IO présent mais connexions applicatives refusées | Chat et événements authentifiés fonctionnels |
-| Authentification et autorisations | À développer ; matrice de droits conçue | Tests de confidentialité, sessions et accès inter-parties |
-| ORM et migrations | Configuration Prisma présente, schéma sans modèles | Client utilisé dans les repositories, migrations versionnées et appliquées |
+| Authentification et autorisations | Comptes/sessions et accès aux profils implémentés ; droits du jeu à développer | Tests de confidentialité, sessions et accès inter-parties |
+| ORM et migrations | User et migration initiale présents ; repository Prisma des comptes implémenté | Client utilisé dans les repositories, migrations versionnées et appliquées |
 | Cache des réponses d'API avec Redis | Redis provisionné ; politique de statistiques conçue | Réponse servie depuis le cache, expiration et invalidation démontrées |
-| OpenAPI interactive sur `/doc` en développement | Swagger présent sur `/api/docs/` ; `/doc` à développer | Route demandée accessible en dev et contrat à jour |
+| OpenAPI interactive sur `/doc` en développement | `/doc` en développement, `/api/docs/` et contrat des comptes présents | Route demandée accessible en dev et contrat à jour |
 | Déploiement sur VPS de l'école et données de test | Guide présent ; cible confirmée ; déploiement à vérifier | Service accessible et partie démontrable avec données de test sans données personnelles réelles |
 | HTTP/2 et TLS | Procédure Certbot présente ; HTTP/2 à configurer et vérifier | Négociation HTTP/2 et certificat valide au niveau Nginx |
 | CI/CD GitHub Actions ou GitLab CI | Workflows CI et publication par tag présents ; déploiement distant à compléter | Runs réussis, livraison reproductible et étapes de déploiement expliquées |
@@ -26,10 +26,10 @@ Légende : **présent** = fichier ou socle disponible ; **conçu** = documenté 
 | Images Docker versionnées | Dockerfile et publication GHCR sur tag présents ; exécution à vérifier | Image étiquetée, construite et utilisée pour une livraison |
 | Audits de sécurité du code et des images | Audit npm de production en CI ; analyse de code et scan d'image à compléter | Rapports, décisions de traitement et aucun secret versionné |
 | Monitoring performances/fiabilité et erreurs centralisées | Logs JSON et gestionnaire HTTP présents ; monitoring/centralisation à développer | Traces/métriques, accès aux erreurs et diagnostic d'un incident |
-| Rate-limiting API | À développer | Dépassement contrôlé avec réponse 429 ; protection aussi du chat |
+| Rate-limiting API | Limites des routes applicatives, CSRF, inscriptions et connexions implémentées dans Redis ; chat à venir | Dépassement contrôlé avec réponse 429 ; protection aussi du chat |
 | Montée en charge cohérente avec le métier | Script santé présent ; scénario métier à développer | Rapport avec hypothèses, ressources VPS, charge, latence, erreurs et limites |
-| Redémarrage après crash ou reboot et healthchecks | Policies Docker et healthchecks présents ; comportement à vérifier | Test de crash/reboot, conservation des données et reprise des phases |
-| Domaine indépendant du framework, code maintenable | Organisation préparée ; domaine non implémenté | Tests métier sans Express, Socket.IO ou Prisma |
+| Redémarrage après crash ou reboot et healthchecks | Démarrage local et healthchecks validés pour les comptes ; crash/reboot et reprise du jeu à vérifier | Test de crash/reboot, conservation des données et reprise des phases |
+| Domaine indépendant du framework, code maintenable | Comptes : service et ports indépendants d’Express et Prisma ; domaine du jeu à venir | Tests métier sans Express, Socket.IO ou Prisma |
 | Application fonctionnelle prioritaire sur la complétude | Pas encore jouable ; V1 délimitée | Démonstration de bout en bout avec les trois rôles |
 | Stack éprouvée Node.js/PHP et composants maintenus | Express/Node.js/TypeScript installés ; versions verrouillées | Choix et risques expliqués, audits suivis |
 | Load balancer et OpenTelemetry avec visualisation, annoncés dans le cours initial | Nginx proxy seul ; plusieurs instances et instrumentation à développer | Démonstration de répartition et observabilité selon attentes de l'enseignant |
@@ -48,9 +48,13 @@ Vérifier sous charge les autorisations, l'absence de vote/fin de phase en doubl
 
 ## Ordre de mise en œuvre après cette branche
 
-1. Valider le démarrage Docker du socle, puis développer comptes/sessions et protections communes.
+1. Comptes/sessions et protections communes implémentés ; vérifier et maintenir le parcours complet sur chaque livraison.
 2. Salons et inscriptions, puis moteur de jeu testable indépendamment des transports.
 3. Chats autorisés, historique, statistiques et cache.
 4. Compléter qualité, sécurité, observabilité, livraison et preuves de déploiement/charge tout au long de ces lots.
 
 Ne pas attendre la fin du jeu pour vérifier l'infrastructure ou les droits. Les rôles exclusifs viennent après une première partie complète et fiable.
+
+## Preuves locales du lot comptes
+
+Le 19 novembre 2026 : 19 tests unitaires, 2 tests d'intégration PostgreSQL/Redis dans Docker et un smoke test HTTP complet réussis ; images construites, migration initiale appliquée et seconde exécution sans changement. Les tests utilisent un projet éphémère et ne constituent pas une preuve de déploiement sur le VPS. Les workflows CI restent à exécuter sur GitHub après publication de la branche.

@@ -1,6 +1,6 @@
 # Contrats d'interface préliminaires
 
-Statut : cible de développement, pas une description des routes déjà implémentées. Seuls santé, readiness, Swagger et OpenAPI sont actuellement servis ; Socket.IO refuse encore les connexions applicatives. Références : [règles](specifications.md), [MCD](data-model.md).
+Statut : contrats cibles ; les routes de comptes et sessions sont désormais implémentées et décrites précisément dans le [guide d’authentification](authentication.md). Les ressources de jeu restent futures ; Socket.IO refuse encore les connexions applicatives. Références : [règles](specifications.md), [MCD](data-model.md).
 
 ## 1. Principes communs
 
@@ -12,7 +12,7 @@ Représentations de ressources et collections : `application/hal+json` avec `_li
 
 Chaque création HTTP renvoie 201 et un header `Location` ; une suppression de session ou d'appartenance réussie renvoie 204. Les lectures réussies renvoient 200. Les formes détaillées des entrées seront inscrites dans OpenAPI au moment du développement de chaque lot.
 
-## 2. Ressources HTTP futures
+## 2. Ressources HTTP — comptes disponibles, jeu à venir
 
 | Méthode et chemin | Responsabilité | Accès et principales données |
 | --- | --- | --- |
@@ -69,6 +69,8 @@ Le serveur gère les rooms, par exemple `game:{id}:public`, `game:{id}:wolves`, 
 
 ## 4. Documentation et compatibilité
 
-Le socle expose actuellement `/api/docs/` et `/api/openapi.json`. Ajouter ultérieurement `/doc` en développement pour satisfaire le sujet ; la présence de cette exigence dans ce document n'ajoute pas encore la route. Le modèle Nginx devra être revu si une nouvelle URL doit traverser le proxy.
+Le serveur expose `/api/docs/`, `/api/openapi.json` et désormais `/doc` en développement. Le modèle Nginx devra être revu si une nouvelle URL doit traverser le proxy.
 
-Ces contrats guident les prochains lots. Les schémas détaillés, limites des messages, politiques de session et tests de validation seront figés dans le lot concerné avant son implémentation ; toute évolution devra être répercutée dans les deux fichiers d'agents et OpenAPI.
+Le module comptes ajoute aussi `GET /api/csrf`, `GET /api/users/{userId}` limité à soi-même et `GET /api/sessions/current`. Son guide est la référence pour les validations et statuts effectivement implémentés.
+
+Ces contrats guident les prochains lots de jeu. Les schémas détaillés, limites des messages, politiques de session et tests de validation seront figés dans le lot concerné avant son implémentation ; toute évolution devra être répercutée dans les deux fichiers d'agents et OpenAPI.

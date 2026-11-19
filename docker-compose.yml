@@ -5,6 +5,9 @@ x-backend-environment: &backend-environment
   HOST: 0.0.0.0
   PORT: 3000
   APP_ORIGIN: ${APP_ORIGIN:?Define APP_ORIGIN in .env}
+  SESSION_SECRET: ${SESSION_SECRET:?Define SESSION_SECRET in .env}
+  SESSION_TTL_SECONDS: ${SESSION_TTL_SECONDS:-28800}
+  SESSION_SAME_SITE: ${SESSION_SAME_SITE:-lax}
   LOG_LEVEL: ${LOG_LEVEL:-info}
   TRUST_PROXY_HOPS: ${TRUST_PROXY_HOPS:-1}
   POSTGRES_HOST: db
@@ -31,6 +34,8 @@ services:
         condition: service_healthy
       redis:
         condition: service_healthy
+      migrate:
+        condition: service_completed_successfully
     networks: [default, data]
     healthcheck:
       test: ["CMD", "node", "-e", "fetch('http://127.0.0.1:3000/api/ready').then(r=>process.exit(r.ok?0:1)).catch(()=>process.exit(1))"]
@@ -73,9 +78,8 @@ services:
       timeout: 3s
       retries: 10
 
-  # Outil ponctuel pour les futures migrations ; pas de service permanent.
+  # Migration versionnée exécutée avant le démarrage de l’API. Échec = API non démarrée.
   migrate:
-    profiles: [tools]
     build:
       context: ./back
       target: build
@@ -85,6 +89,24 @@ services:
     depends_on:
       db:
         condition: service_healthy
+
+  integration:
+    profiles: [test]
+    build:
+      context: ./back
+      target: test
+    environment:
+      <<: *backend-environment
+      RUN_INTEGRATION: "1"
+    command: ["npm", "run", "test:integration"]
+    networks: [data]
+    depends_on:
+      db:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+      migrate:
+        condition: service_completed_successfully
 
 networks:
   data:

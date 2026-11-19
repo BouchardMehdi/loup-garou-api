@@ -5,11 +5,13 @@ Back-end multijoueur réalisé en binôme pour un cours de développement d'API.
 ## État du projet
 
 Le socle technique est exécutable : Express, Socket.IO, validation de configuration, logs JSON, documentation OpenAPI, routes de santé, tests et Docker.
-Les comptes, salons, rôles, votes, chats et statistiques ne sont pas encore implémentés. Les connexions Socket.IO sont volontairement refusées jusqu'à l'ajout des sessions et autorisations.
+Les comptes utilisateurs et sessions sont implémentés. Les salons, rôles, votes, chats et statistiques restent à développer. Les connexions Socket.IO sont volontairement refusées jusqu'à l'ajout des sessions et autorisations.
 
 ## Documents de conception
 
-La première version est spécifiée ; elle n'est pas encore implémentée.
+La première version du jeu est spécifiée ; seuls les comptes et sessions sont implémentés à ce stade. Ce dépôt développe le back-end ; le front est réalisé séparément par le collègue.
+
+- [Authentification : contrat pour le front](docs/authentication.md).
 
 - [Spécifications fonctionnelles et scénarios d'acceptation](docs/specifications.md).
 - [Modèle conceptuel de données (MCD)](docs/data-model.md).
@@ -24,7 +26,7 @@ Règles retenues : 6 à 12 joueurs ; une voyante et 1, 2 ou 3 loups selon l'effe
 TypeScript, Node.js 24 LTS, Express.js 5, PostgreSQL 16, Prisma 7, Redis 7 et Socket.IO 4.
 Zod valide les entrées ; Vitest et Supertest vérifient le socle.
 
-Pour la suite : sessions Redis avec cookie HttpOnly, Argon2id, cache, instrumentation OpenTelemetry/Jaeger et répartition de charge entre plusieurs instances. Voir [l'architecture](docs/architecture.md).
+Comptes : sessions Redis avec cookie HttpOnly, Argon2id, CSRF et limites de requêtes. Pour la suite : cache des réponses, instrumentation OpenTelemetry/Jaeger et répartition de charge entre plusieurs instances. Voir [l'architecture](docs/architecture.md).
 
 ## Structure
 
@@ -57,7 +59,7 @@ Prérequis : Git, Docker et Docker Compose v2 ou supérieur, moteur Docker déma
 
 ```bash
 cp .env.example .env
-# Renseigner POSTGRES_PASSWORD (16 caractères minimum), APP_ORIGIN et un port libre.
+# Renseigner POSTGRES_PASSWORD (16 caractères minimum), SESSION_SECRET (32 minimum), APP_ORIGIN et un port libre.
 docker compose up -d --build
 docker compose ps
 curl http://127.0.0.1:3009/api/health
@@ -66,12 +68,13 @@ curl http://127.0.0.1:3009/api/ready
 
 Sous PowerShell, copier avec `Copy-Item .env.example .env`. Les exemples utilisent le port 3009 ; l'adapter si `API_HOST_PORT` change.
 
-Pour un essai local, utiliser `APP_ORIGIN=http://localhost:3009`. En production, utiliser l'origine HTTPS de l'interface autorisée.
+Pour un essai local HTTP, utiliser `NODE_ENV=development` et `APP_ORIGIN=http://localhost:3009` (ou l’origine exacte du front, par exemple `http://localhost:5173`). En production, utiliser l'origine HTTPS de l'interface autorisée.
 L'API est publiée uniquement sur `127.0.0.1`. PostgreSQL et Redis n'ont aucun port publié avec le Compose de production.
 
 - `GET /api/health` : vivacité du processus HTTP, format HAL.
 - `GET /api/ready` : disponibilité PostgreSQL/Redis ; renvoie 503 si une dépendance échoue.
-- `/api/docs/` : Swagger UI.
+- `/api/docs/` : Swagger UI ; `/doc` est également disponible en développement.
+- `/api/csrf`, `/api/users`, `/api/sessions`, `/api/me` : [parcours des comptes](docs/authentication.md).
 - `/api/openapi.json` : contrat OpenAPI.
 - `/socket.io/` : transport Socket.IO réservé, sans événements métier ni connexions authentifiées à ce stade.
 
@@ -108,13 +111,16 @@ npm run build
 npm run prisma:validate
 ```
 
+Pour les tests réels sur une configuration locale isolée : `docker compose --profile test run --build --rm integration` depuis la racine. Ne pas utiliser la base de production pour ces tests.
+
 `npm start` exécute le code compilé et attend les variables dans l'environnement. Pour charger le fichier racine lors d'un essai local : `node --env-file=../.env dist/server.js` depuis `back/`.
 
 ## Prisma
 
-Le schéma est préparé sans modèles métier ni migration. Aucun client n'est encore généré ; la readiness utilise une requête SQL minimale.
-Après validation du modèle de données : ajouter les modèles, lancer `npm run prisma:generate`, puis `npm run db:migrate:dev -- --name initial` sur la base de développement.
-Intégrer alors la génération du client au build et son initialisation aux repositories. Versionner les migrations, jamais le client généré. En production, utiliser uniquement les migrations déjà versionnées ; voir `deploy.md`.
+Le modèle utilisateur et sa première migration sont versionnés. Le client Prisma est généré avant `typecheck` et `build` ; il reste ignoré par Git. Les repositories des comptes utilisent Prisma via l'adaptateur PostgreSQL.
+
+Compose applique `prisma migrate deploy` avec le service ponctuel `migrate`, puis démarre l'API uniquement en cas de succès. Pour créer une future migration, utiliser la base de développement avec `npm run db:migrate:dev -- --name description`. Ne pas utiliser `migrate dev` ou `db push` en production.
+
 
 ## Fonctionnalités prévues
 
@@ -137,7 +143,7 @@ Ces accès s'appliquent pendant la partie à tout moment, indépendamment du jou
 ## Travail en binôme et automatisation
 
 Les consignes Codex/Claude sont dans `AGENTS.md` et `CLAUDE.md`, dont les contenus doivent rester identiques.
-Travailler par branches et pull requests. La CI vérifie types, lint, tests, build, schéma Prisma, égalité des consignes, configuration Compose, construction de l'image et démarrage avec PostgreSQL/Redis.
+Travailler par branches et pull requests. La CI vérifie types, lint, tests, build, schéma Prisma, égalité des consignes, configuration Compose, construction de l'image et démarrage avec PostgreSQL/Redis, avec un smoke test complet des comptes.
 Un tag `v*` déclenche également les vérifications puis publie une image versionnée dans GHCR. Aucun accès au VPS ni déploiement distant automatique n'est configuré.
 
 Un premier scénario de charge HTTP est dans `load/health.js` : `k6 run load/health.js` contre une instance de test locale. Il ne couvre pas encore Socket.IO.
