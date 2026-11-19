@@ -1,10 +1,10 @@
-# Déploiement sur le VPS Linux
+# Déploiement sur le VPS Linux de l’école
 
 Ce guide concerne le socle API. Il ne déploie pas les fonctionnalités de jeu encore absentes et n'effectue aucune action sur le VPS à lui seul.
 
 ## Infrastructure retenue
 
-Nginx et Certbot sont installés sur le VPS. Docker Compose exécute l'API, PostgreSQL et Redis. Le site principal `bouchard-mehdi.fr` reste chez Hostinger.
+Le VPS décrit ici est celui de l'école, confirmé par le propriétaire le 19 novembre 2026. Nginx et Certbot sont installés sur ce VPS. Docker Compose exécute l'API, PostgreSQL et Redis. Le site principal `bouchard-mehdi.fr` reste chez Hostinger.
 
 Exemple à adapter : sous-domaine `loup-garou.bouchard-mehdi.fr` et port API `3009`. Ce sous-domaine n'a pas été créé par le projet. Vérifier que le port est libre ; ne pas modifier les configurations des autres projets.
 
@@ -30,14 +30,14 @@ Avec un utilisateur disposant des droits sur `/home/projects` et d'accès à Doc
 
 ```bash
 cd /home/projects
-git clone git@github.com:BouchardMehdi/loup-garou-api.git
+git clone https://github.com/BouchardMehdi/loup-garou-api.git
 cd loup-garou-api
 cp .env.example .env
 chmod 600 .env
 openssl rand -hex 32
 ```
 
-Le dépôt est privé : configurer au préalable un accès GitHub au VPS, par exemple une clé de déploiement en lecture. Ne jamais placer un token dans l'URL du dépôt ou dans le README.
+Le dépôt est public : le clonage HTTPS en lecture ne nécessite pas d'authentification GitHub. Les secrets applicatifs restent dans `.env` non versionné. La visibilité du dépôt ne détermine pas celle des packages GHCR ; vérifier séparément les droits de lecture d'une image privée. Ne jamais placer un token dans une URL ou dans le README.
 
 Modifier `.env` avec un éditeur et renseigner :
 
@@ -80,7 +80,7 @@ Créer le lien seulement s'il n'existe pas déjà. La configuration préserve `/
 curl --fail http://loup-garou.bouchard-mehdi.fr/api/health
 ```
 
-Le chemin `/` renvoie volontairement 404 pour une API seule ; Swagger est accessible sur `/api/docs/`.
+Le chemin `/` renvoie volontairement 404 pour une API seule ; Swagger est actuellement accessible sur `/api/docs/`. La route `/doc` requise en développement et la configuration HTTP/2 restent à mettre en place dans un futur lot ; voir le [suivi des exigences](docs/requirements.md).
 
 ## 5. Activer HTTPS
 

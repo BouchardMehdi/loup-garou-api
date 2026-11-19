@@ -27,8 +27,21 @@ Ce document s'adresse à Codex et à Claude Code. Le projet est réalisé en bin
 - Trois rôles de départ : villageois, loup-garou et voyante.
 - Alternance jour/nuit, actions nocturnes, votes, éliminations et détection de victoire.
 - Historique des parties et statistiques simples.
-- Trois chats distincts par partie, en temps réel.
+- Trois chats distincts pendant la partie, en temps réel, puis un canal commun d’après-partie.
 - Prévoir l'ajout ultérieur de rôles inventés et exclusifs ; leurs pouvoirs et règles restent à définir avec les développeurs.
+
+## Règles de la première version
+
+- Source de vérité fonctionnelle : `docs/specifications.md` ; MCD : `docs/data-model.md` ; interfaces futures : `docs/interfaces.md` ; conformité : `docs/requirements.md`.
+- Ces documents décrivent une cible, pas des fonctionnalités déjà disponibles. Le schéma Prisma et le code applicatif ne sont pas modifiés par la branche de conception.
+- 6 à 12 joueurs ; une voyante, un loup pour 6–7 joueurs, deux pour 8–10 et trois pour 11–12, autres joueurs villageois.
+- Victoire du village sans loup vivant ; victoire des loups à parité ou majorité des vivants. Les morts partagent le résultat de leur camp.
+- Départ de nuit, puis débat et vote. Durées entières réglables de 30 à 300 secondes ; valeurs initiales débat/vote/nuit : 180/60/60.
+- Nuit et vote se terminent dès validation de tous les acteurs attendus, ou à l'échéance ; le débat garde sa durée. Choix définitifs, abstention possible, action manquante sans effet.
+- Vote du village et choix des loups : maximum unique uniquement ; égalité ou absence de voix = aucune victime. Pas de cible soi-même, pas de cible loup pour les loups.
+- La voyante peut découvrir le rôle exact d'un autre vivant, uniquement pour elle. Les éliminations ne révèlent pas les rôles au village avant la fin.
+- Les déconnexions ne suppriment pas la participation ni n'arrêtent les délais ; restaurer l'état autorisé à la reconnexion.
+- Une partie par salon en V1 ; aucun nouveau participant ni réglage après lancement. Les conventions complémentaires et scénarios d'acceptation sont dans les spécifications.
 
 ## Règles impératives des chats
 
@@ -45,7 +58,7 @@ Les accès sont indépendants de la phase jour/nuit. Le chat public est commun a
 - Vérifier l'identité, l'appartenance à la partie, l'état et le rôle côté serveur. Le client ne choisit jamais librement ses rooms.
 - À l'élimination, retirer toutes les connexions du joueur des canaux des vivants et autoriser uniquement celui des morts.
 - Réévaluer les accès après reconnexion ; une ancienne connexion ou session ne doit pas conserver des droits périmés.
-- Ne pas déduire de nouvelles règles pour l'avant-partie, les spectateurs ou l'après-partie : ces cas restent à définir.
+- Avant-partie : aucun chat prévu en V1 ; spectateurs exclus. Après-partie : révéler les rôles aux seuls participants et ouvrir POST_GAME à tous ces participants. Les trois anciens canaux deviennent des historiques en lecture seule, accessibles selon le rôle et l’état final du joueur ; un mort ne retrouve pas les canaux des vivants.
 
 ## Stack validée
 
@@ -102,7 +115,8 @@ Les accès sont indépendants de la phase jour/nuit. Le chat public est commun a
 - `back/` contient le serveur ; `front/` est réservé à une interface future sans framework choisi.
 - Depuis `back/` : `npm ci`, `npm run typecheck`, `npm run lint`, `npm test`, `npm run build`, `npm run prisma:validate`.
 - Prisma est configuré sans modèles ni client généré. Ajouter génération et repositories avec le modèle de données validé.
-- Infrastructure : VPS Linux, Nginx et Certbot sur l'hôte ; API, PostgreSQL et Redis dans Docker Compose. DNS des sous-domaines chez Hostinger ; site principal conservé chez Hostinger.
+- Infrastructure : VPS Linux de l’école, confirmé par l’utilisateur ; Nginx et Certbot sur l’hôte ; API, PostgreSQL et Redis dans Docker Compose. DNS des sous-domaines chez Hostinger ; site principal conservé chez Hostinger.
+- Le dépôt GitHub est public, selon confirmation de l’utilisateur le 19 novembre 2026. Ne pas traiter cette visibilité comme une autorisation de publier des secrets ; GHCR possède ses propres droits d’accès.
 - Conserver à la racine `docker-compose.yml`, `.env.example`, `README.md` et `deploy.md`, à actualiser avec chaque nouvelle variable ou étape d'exploitation.
 - Lancement : `docker compose up -d --build` après configuration de `.env`. Ne pas utiliser le Compose de développement sur le VPS.
 - Publier les ports applicatifs uniquement sur `127.0.0.1`, avec un port distinct des autres projets. Aucun port de base de données publié en production.
@@ -115,17 +129,21 @@ Les accès sont indépendants de la phase jour/nuit. Le chat public est commun a
 
 ## Décisions encore ouvertes
 
-- Nombre de joueurs, répartition des rôles et conditions exactes de victoire.
-- Égalités, abstentions, délais, déconnexions et abandon d'une partie.
-- Pouvoirs, camps, conditions de victoire et accès aux chats des rôles exclusifs.
-- Sélection des rôles activés par le créateur du salon : proposition à valider.
-- Accès aux messages avant/après la partie, spectateurs et durée de conservation.
-- Modèle de données, contrat précis des routes et événements, statistiques conservées.
-- Durée des sessions et politique de migrations compatibles lors des futures livraisons.
+- Pouvoirs, camps, interactions et droits des futurs rôles exclusifs ; sélection des rôles par salon au-delà de la composition V1.
+- Politique de conservation et de suppression de compte avant utilisation de données réelles.
+- Schémas détaillés des entrées HTTP/Socket.IO, validation des comptes et messages, durée et cycle des sessions : à figer dans les lots concernés.
+- Traduction du MCD en schéma Prisma, index, transactions et politique de migrations compatibles.
+- Revanche dans le même salon, spectateurs, modération et abandon explicite : hors V1, ne pas les ajouter implicitement.
 
 Ne pas présenter ces points comme déjà décidés. Demander une précision lorsqu'une décision conditionne le comportement à implémenter ; poursuivre les travaux indépendants utiles.
 
 ## Commentaires de suivi et évolutions futures
+
+<!--
+2026-11-19 | VALIDÉ ET DOCUMENTÉ | Conception de la première version
+Décisions de jeu recueillies auprès de l’utilisateur : 6–12 joueurs, composition, parité, délais réglables, égalités sans victime, reconnexion et canal d’après-partie. Spécifications, MCD, contexte C4, contrats préliminaires et matrice des exigences ajoutés. VPS confirmé comme celui de l’école et dépôt rendu public par l’utilisateur. Aucun code métier ni migration livré par cette branche.
+-->
+
 
 <!--
 2026-11-18 | IMPLÉMENTÉ | Socle et cible VPS

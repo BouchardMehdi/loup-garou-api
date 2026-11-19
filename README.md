@@ -1,11 +1,23 @@
 # Loup-Garou API
 
-Back-end multijoueur réalisé en binôme pour un cours de développement d'API. Nom provisoire.
+Back-end multijoueur réalisé en binôme pour un cours de développement d'API. Nom provisoire. Dépôt GitHub public ; cible de déploiement : VPS de l'école.
 
-## état du projet
+## État du projet
 
 Le socle technique est exécutable : Express, Socket.IO, validation de configuration, logs JSON, documentation OpenAPI, routes de santé, tests et Docker.
 Les comptes, salons, rôles, votes, chats et statistiques ne sont pas encore implémentés. Les connexions Socket.IO sont volontairement refusées jusqu'à l'ajout des sessions et autorisations.
+
+## Documents de conception
+
+La première version est spécifiée ; elle n'est pas encore implémentée.
+
+- [Spécifications fonctionnelles et scénarios d'acceptation](docs/specifications.md).
+- [Modèle conceptuel de données (MCD)](docs/data-model.md).
+- [Architecture : contexte C4 et vue technique](docs/architecture.md).
+- [Contrats HTTP et Socket.IO préliminaires](docs/interfaces.md).
+- [Suivi des exigences et preuves attendues au rendu](docs/requirements.md).
+
+Règles retenues : 6 à 12 joueurs ; une voyante et 1, 2 ou 3 loups selon l'effectif ; victoire des loups à parité ; égalité sans élimination. Débat, vote et nuit sont réglables entre 30 et 300 secondes (valeurs initiales 180/60/60). Les déconnexions ne suppriment pas les participants. Après la partie, les rôles sont révélés et un canal commun est ouvert.
 
 ## Stack
 
@@ -110,7 +122,7 @@ Intégrer alors la génération du client au build et son initialisation aux rep
 - Salons publics et privés par code ; lancement par le créateur.
 - Attribution aléatoire confidentielle des rôles : villageois, loup-garou et voyante.
 - Alternance jour/nuit, actions nocturnes, votes, éliminations et victoire automatique.
-- Historique, statistiques et trois canaux de chat en temps réel par partie.
+- Historique, statistiques, trois canaux de chat pendant la partie et un canal commun après-partie.
 - Rôles exclusifs inventés ultérieurement ; pouvoirs à définir.
 
 | Joueur | Chat public de la partie | Chat des loups-garous | Chat des morts |
@@ -120,7 +132,7 @@ Intégrer alors la génération du client au build et son initialisation aux rep
 | Loup-garou vivant | Oui | Oui | Non |
 | Mort, quel que soit son rôle | Non | Non | Oui |
 
-Ces accès s'appliquent à tout moment, indépendamment du jour et de la nuit, à la lecture, à l'envoi et à la réception. Un mort perd l'accès aux canaux des vivants.
+Ces accès s'appliquent pendant la partie à tout moment, indépendamment du jour et de la nuit, à la lecture, à l'envoi et à la réception. Un mort perd l'accès aux canaux des vivants. Après la partie, tous les participants accèdent au canal commun POST_GAME ; les anciens canaux deviennent des historiques en lecture seule selon les droits finaux de chacun.
 
 ## Travail en binôme et automatisation
 
