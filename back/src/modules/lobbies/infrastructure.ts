@@ -2,6 +2,7 @@ import type { PrismaClient, Prisma } from '../../generated/prisma/client.js';
 import { LobbyError, type Lobby, type LobbyRepository } from './domain.js';
 
 const include = {
+  game: { select: { id: true } },
   owner: { select: { id: true, username: true } },
   memberships: { where: { leftAt: null }, select: { id: true, userId: true, joinedAt: true,
     user: { select: { username: true } } }, orderBy: [{ joinedAt: 'asc' }, { id: 'asc' }] },
@@ -9,6 +10,7 @@ const include = {
 type StoredLobby = Prisma.LobbyGetPayload<{ include: typeof include }>;
 function map(lobby: StoredLobby): Lobby {
   return { id: lobby.id, name: lobby.name, visibility: lobby.visibility, status: lobby.status,
+    gameId: lobby.game?.id ?? null,
     capacity: lobby.capacity, owner: lobby.owner, invitationHash: lobby.invitationHash,
     discussionDurationSeconds: lobby.discussionDurationSeconds, voteDurationSeconds: lobby.voteDurationSeconds,
     nightDurationSeconds: lobby.nightDurationSeconds, createdAt: lobby.createdAt,

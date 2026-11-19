@@ -22,6 +22,7 @@ redis.on('error', () => {});
 const repo = prismaLobbies(prisma); const service = new LobbyService(repo);
 const users: Array<{ id: string; email: string }> = []; const lobbyIds: string[] = [];
 const prefix = `test:lobby-session:${randomUUID()}:`;
+const limitPrefix = prefix.replace('session', 'limit');
 const settings = { name: 'Village integration', visibility: 'PUBLIC' as const, capacity: 6,
   discussionDurationSeconds: 180, voteDurationSeconds: 60, nightDurationSeconds: 60 };
 
@@ -39,7 +40,7 @@ afterAll(async () => {
     await prisma.lobbyMembership.deleteMany({ where: { lobbyId: { in: lobbyIds } } });
     await prisma.lobby.deleteMany({ where: { id: { in: lobbyIds } } });
     await prisma.user.deleteMany({ where: { id: { in: users.map((u) => u.id) } } });
-    if (redis.isReady) for await (const keys of redis.scanIterator({ MATCH: `${prefix}*` })) { if (keys.length) await redis.del(keys); }
+    if (redis.isReady) for (const scopedPrefix of [prefix,limitPrefix]) for await (const keys of redis.scanIterator({ MATCH: `${scopedPrefix}*` })) { if (keys.length) await redis.del(keys); }
   } finally {
     await prisma.$disconnect(); await pool.end(); if (redis.isOpen) await redis.close();
   }
@@ -110,7 +111,7 @@ it('exercises private creation/join/leave through real authenticated HTTP sessio
   const origin = 'http://localhost:5173';
   const app = createApp({ origin, trustProxyHops: 0, checks: { database: async () => {}, redis: async () => {} }, lobbies: service,
     accounts: { service: await AccountService.create(prismaUsers(prisma),argonPasswords),
-      sessionStore: new RedisStore({ client: redis,prefix,disableTouch: true }),limiter: redisLimiter(redis),
+      sessionStore: new RedisStore({ client: redis,prefix,disableTouch: true }),limiter: redisLimiter(redis,limitPrefix),
       secret: 'lobby-integration-test-session-secret-at-least-32-characters',secureCookies: false,sameSite: 'lax',ttlSeconds: 3600,origin } });
   const clients=[];
   for (const user of users.slice(0,2)) {

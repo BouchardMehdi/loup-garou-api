@@ -7,13 +7,16 @@ import { accountRouter, type AccountHttpOptions } from './modules/accounts/http.
 import { AccountError } from './modules/accounts/domain.js';
 import { lobbyRouter } from './modules/lobbies/http.js';
 import type { LobbyService } from './modules/lobbies/service.js';
+import { gameRouter } from './modules/game/http.js';
+import type { GameService } from './modules/game/service.js';
+import { GameError } from './modules/game/domain.js';
 import { LobbyError } from './modules/lobbies/domain.js';
 import { HttpError } from './http/errors.js';
 import { openApiDocument } from './http/openapi.js';
 
 export function createApp(options: {
   origin: string; trustProxyHops: number; checks: DependencyChecks;
-  lobbies?: LobbyService; accounts?: AccountHttpOptions; nodeEnv?: string; onError?: () => void;
+  games?: GameService; lobbies?: LobbyService; accounts?: AccountHttpOptions; nodeEnv?: string; onError?: () => void;
 }) {
   const app = express();
   app.disable('x-powered-by');
@@ -38,13 +41,20 @@ export function createApp(options: {
   app.get('/api/openapi.json', (_req, res) => { res.json(openApiDocument); });
   app.use('/api/docs', swaggerUi.serve, swaggerUi.setup(openApiDocument));
   if (options.nodeEnv === 'development') app.use('/doc', swaggerUi.serve, swaggerUi.setup(openApiDocument));
-  if (options.lobbies && !options.accounts) throw new Error('Lobby routes require account security middleware');
+  if ((options.lobbies || options.games) && !options.accounts) throw new Error('Lobby routes require account security middleware');
   if (options.accounts) {
     app.use('/api', accountRouter(options.accounts));
     if (options.lobbies) app.use('/api', lobbyRouter({ service: options.lobbies, accounts: options.accounts.service, limiter: options.accounts.limiter }));
+    if (options.games) app.use('/api', gameRouter({ service: options.games, accounts: options.accounts.service, limiter: options.accounts.limiter }));
   }
   app.use((_req, res) => { res.status(404).json({ error: 'Not found' }); });
   const errorHandler: ErrorRequestHandler = (error: unknown, _req, res, _next) => {
+    if (error instanceof GameError) {
+      const status=error.code==='GAME_NOT_FOUND' || error.code==='LOBBY_NOT_FOUND' ? 404 : error.code==='START_FORBIDDEN' ? 403 : 409;
+      const messages={ GAME_NOT_FOUND: 'Game not found',LOBBY_NOT_FOUND: 'Lobby not found',START_FORBIDDEN: 'Only the lobby owner can start',
+        LOBBY_NOT_WAITING: 'Lobby is not waiting',PLAYER_COUNT_INVALID: 'Game requires 6 to 12 players within lobby capacity',GAME_ALREADY_STARTED: 'Game already started' };
+      res.status(status).json({ code: error.code,error: messages[error.code] }); return;
+    }
     if (error instanceof LobbyError) {
       const status = error.code === 'LOBBY_NOT_FOUND' ? 404 : error.code === 'INVALID_LOBBY' ? 400 : 409;
       const messages = { LOBBY_NOT_FOUND: 'Lobby or membership not found', INVALID_LOBBY: 'Invalid lobby settings',

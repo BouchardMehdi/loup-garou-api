@@ -1,6 +1,6 @@
 # Salons — contrat back-end pour le front
 
-Les salons sont disponibles sur la branche `feat/lobbies`. Le front Vue déjà présent reste sous la responsabilité du collègue : cette livraison ne remplace pas ses données simulées par des appels réseau. Le démarrage d'une partie, les rôles et les événements Socket.IO restent à développer.
+Les salons sont disponibles sur la branche `feat/lobbies`. Le front Vue déjà présent reste sous la responsabilité du collègue : cette livraison ne remplace pas ses données simulées par des appels réseau. Le [lancement des parties et les rôles personnels](game-start.md) sont désormais disponibles. Les événements Socket.IO et actions de jeu restent à développer.
 
 Toutes les routes exigent une session valide. Pour les mutations, reprendre le parcours de [l'authentification](authentication.md) : `credentials: include`, `Origin` égal à `APP_ORIGIN` et `X-CSRF-Token` courant. Les réponses ne sont pas mises en cache et utilisent HAL pour les ressources.
 
@@ -21,7 +21,7 @@ Toutes les routes exigent une session valide. Pour les mutations, reprendre le p
 
 Seul `name` est obligatoire. Valeurs par défaut : visibilité `PUBLIC`, capacité 12, durées 180/60/60. Nom nettoyé des espaces périphériques, 3 à 80 caractères, sans caractères de contrôle ; capacité entière 6 à 12, durées entières 30 à 300 secondes. Les champs supplémentaires, dont `ownerId` ou `status`, sont refusés.
 
-Réponse 201, `Location: /api/lobbies/{id}`, état `WAITING`, créateur membre et propriétaire, effectif initial 1. Les champs sont : id, name, visibility, status, capacity, memberCount, owner (id et username), trois durées, createdAt, members et `_links`.
+Réponse 201, `Location: /api/lobbies/{id}`, état `WAITING`, créateur membre et propriétaire, effectif initial 1. Les champs sont : id, gameId (null avant lancement), name, visibility, status, capacity, memberCount, owner (id et username), trois durées, createdAt, members et `_links`.
 
 Un salon privé ajoute `invitationCode` à cette unique réponse de création : 24 caractères hexadécimaux aléatoires, soit 96 bits. Le code n'est ni un ID de salon ni un mot de passe de compte. Seule son empreinte SHA-256 est stockée. Le créateur doit conserver le code ou transmettre l'invitation au moment de la création : les lectures ultérieures ne le renvoient pas, même au propriétaire. Régénération et modification des réglages sont hors de ce lot.
 
@@ -70,7 +70,7 @@ Après un échec réseau lors d'une création, ne pas rejouer aveuglément la re
 
 Les tables Lobby et LobbyMembership sont ajoutées par la migration `20261119000200_create_lobbies`, sans supprimer les comptes. Chaque création enregistre salon et propriétaire membre dans une seule transaction. Une arrivée ou un départ verrouille la ligne parent avec SELECT FOR UPDATE dans une transaction Read Committed, relit les membres puis applique les règles ; le verrou protège aussi entre plusieurs processus API.
 
-Un index PostgreSQL partiel unique sur (lobbyId, userId) pour leftAt IS NULL protège les adhésions actives ; un index classique sert les recherches. L'index partiel et les CHECK de capacité/durées/invitation sont définis explicitement dans la migration et doivent être conservés lors des futures évolutions Prisma. Le futur lancement d'une partie devra prendre le même verrou parent pour fermer atomiquement les inscriptions.
+Un index PostgreSQL partiel unique sur (lobbyId, userId) pour leftAt IS NULL protège les adhésions actives ; un index classique sert les recherches. L'index partiel et les CHECK de capacité/durées/invitation sont définis explicitement dans la migration et doivent être conservés lors des futures évolutions Prisma. Le lancement de partie utilise le même verrou parent pour fermer atomiquement les inscriptions. Après lancement, gameId et le lien HAL game dans le détail du salon permettent aux membres de retrouver la partie.
 
 Le propriétaire historique reste référencé sur un salon fermé, même s'il n'y a plus de membre actif. La suppression d'un utilisateur ayant un historique de salons est restreinte par les clés étrangères ; sa politique de suppression reste à concevoir.
 

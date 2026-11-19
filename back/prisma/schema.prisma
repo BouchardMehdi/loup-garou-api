@@ -18,6 +18,7 @@ model User {
   createdAt    DateTime @default(now())
   ownedLobbies Lobby[] @relation("LobbyOwner")
   lobbyMemberships LobbyMembership[]
+  gameParticipations GameParticipant[]
 }
 
 enum LobbyVisibility {
@@ -46,6 +47,7 @@ model Lobby {
   owner User @relation("LobbyOwner", fields: [ownerId], references: [id], onDelete: Restrict)
   createdAt DateTime @default(now())
   memberships LobbyMembership[]
+  game Game?
 
   @@index([visibility, status, createdAt, id])
 }
@@ -61,4 +63,68 @@ model LobbyMembership {
 
   // Active uniqueness is a partial PostgreSQL index in the versioned migration.
   @@index([lobbyId, userId, leftAt])
+}
+
+enum GameTeam {
+  VILLAGE
+  WEREWOLVES
+}
+enum GameStatus {
+  IN_PROGRESS
+  FINISHED
+}
+enum ParticipantStatus {
+  ALIVE
+  DEAD
+}
+enum PhaseType {
+  NIGHT
+  DAY_DISCUSSION
+  DAY_VOTE
+}
+model Role {
+  code String @id @db.VarChar(32)
+  name String @db.VarChar(80)
+  team GameTeam
+  participants GameParticipant[]
+}
+model Game {
+  id String @id @default(uuid()) @db.Uuid
+  lobbyId String @unique @db.Uuid
+  lobby Lobby @relation(fields: [lobbyId], references: [id], onDelete: Restrict)
+  status GameStatus @default(IN_PROGRESS)
+  startedAt DateTime @default(now())
+  finishedAt DateTime?
+  winner GameTeam?
+  discussionDurationSeconds Int
+  voteDurationSeconds Int
+  nightDurationSeconds Int
+  participants GameParticipant[]
+  phases GamePhase[]
+}
+model GameParticipant {
+  id String @id @default(uuid()) @db.Uuid
+  gameId String @db.Uuid
+  game Game @relation(fields: [gameId], references: [id], onDelete: Restrict)
+  userId String @db.Uuid
+  user User @relation(fields: [userId], references: [id], onDelete: Restrict)
+  usernameSnapshot String @db.VarChar(24)
+  roleCode String @db.VarChar(32)
+  role Role @relation(fields: [roleCode], references: [code], onDelete: Restrict)
+  status ParticipantStatus @default(ALIVE)
+  eliminatedAt DateTime?
+
+  @@unique([gameId, userId])
+}
+model GamePhase {
+  id String @id @default(uuid()) @db.Uuid
+  gameId String @db.Uuid
+  game Game @relation(fields: [gameId], references: [id], onDelete: Restrict)
+  type PhaseType
+  cycle Int
+  startedAt DateTime
+  deadline DateTime
+  resolvedAt DateTime?
+
+  @@unique([gameId, cycle, type])
 }

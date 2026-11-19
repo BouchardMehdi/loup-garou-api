@@ -1,6 +1,6 @@
 # Modèle conceptuel de données — première version
 
-Statut : conception cible, partiellement implémentée pour USER, LOBBY et LOBBY_MEMBERSHIP. Ces trois entités ont leurs modèles Prisma et migrations ; les entités de partie restent à implémenter. Le champ technique usernameKey assure l’unicité insensible à la casse et n’est pas exposé par l’API. Ce document décrit des entités, attributs métier et cardinalités ; les types SQL, index et migrations seront conçus lors de l'implémentation.
+Statut : conception cible, implémentée pour USER, LOBBY, LOBBY_MEMBERSHIP, ROLE, GAME, GAME_PARTICIPANT et PHASE (GamePhase dans Prisma). Actions, votes et messages restent à implémenter. Le champ technique usernameKey assure l’unicité insensible à la casse et n’est pas exposé par l’API. Ce document décrit des entités, attributs métier et cardinalités ; les types SQL, index et migrations seront conçus lors de l'implémentation.
 
 Référence : [spécifications](specifications.md).
 
@@ -75,3 +75,7 @@ Aucune durée de conservation ni suppression de compte n'est implémentée ici. 
 ## Traduction du lot salons
 
 Lobby contient propriétaire, visibilité, état, capacité, durées et empreinte d'invitation ; LobbyMembership contient les entrées et départs avec leftAt facultatif. Les relations ne sont pas supprimées lors d'un départ. L'unicité des adhésions actives est un index partiel SQL explicite dans la migration ; un verrou parent par salon protège capacité et succession. Voir [le contrat détaillé](lobbies.md).
+
+## Traduction du lancement des parties
+
+Game possède un lien unique vers Lobby et copie les durées ; GameParticipant référence User et Role avec pseudonyme figé, rôle et état vivant/mort, unique par utilisateur/partie. Role est un catalogue initialisé par migration. GamePhase enregistre la nuit initiale et son échéance ; l'index SQL partiel interdit deux phases non résolues pour une partie. Le moteur qui résoudra ces phases n'est pas encore livré. Voir [le contrat de lancement](game-start.md).

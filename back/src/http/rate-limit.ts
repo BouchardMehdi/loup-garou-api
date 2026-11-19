@@ -16,10 +16,10 @@ if count == 1 then redis.call('PEXPIRE', KEYS[1], ARGV[1]) end
 return { count, redis.call('PTTL', KEYS[1]) }
 `;
 
-export function redisLimiter(redis: RedisEval): RequestLimiter {
+export function redisLimiter(redis: RedisEval, prefix = 'loup:limit:'): RequestLimiter {
   return {
     async consume(key, windowMs) {
-      const result = await redis.eval(increment, { keys: [`loup:limit:${key}`], arguments: [String(windowMs)] });
+      const result = await redis.eval(increment, { keys: [`${prefix}${key}`], arguments: [String(windowMs)] });
       if (!Array.isArray(result)) throw new Error('Invalid rate limit response');
       return { count: Number(result[0]), retryAfterMs: Number(result[1]) };
     },

@@ -127,7 +127,7 @@ Ne pas exécuter `docker compose down` pour une mise à jour habituelle. Ne pas 
 
 ### Migrations de base de données
 
-Les migrations créent les comptes puis ajoutent les tables de salons et participations, sans supprimer les comptes existants. L’index partiel d’adhésion active et les CHECK métier sont intégrés à la seconde migration. `docker compose up -d --build` reconstruit l’API et l’outil de migration ; le service ponctuel `migrate` exécute `prisma migrate deploy` avant le démarrage de l’API. Une base neuve est initialisée et une base déjà à jour ne rejoue pas les migrations appliquées.
+Les migrations créent les comptes, salons et participations, puis ajoutent le catalogue de rôles, les parties, les participants et phases initiales, sans supprimer les comptes existants. L’index partiel d’adhésion active et les CHECK métier sont intégrés à la seconde migration ; la troisième initialise les rôles et garantit une seule phase ouverte par partie. Conserver ces index dans les migrations futures. `docker compose up -d --build` reconstruit l’API et l’outil de migration ; le service ponctuel `migrate` exécute `prisma migrate deploy` avant le démarrage de l’API. Une base neuve est initialisée et une base déjà à jour ne rejoue pas les migrations appliquées.
 
 Sauvegarder avant toute évolution de schéma. Pour une livraison nécessitant un contrôle séparé :
 

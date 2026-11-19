@@ -5,6 +5,7 @@ import { createApp } from '../../src/app.js';
 import { AccountService } from '../../src/modules/accounts/service.js';
 import type { User, UserRepository } from '../../src/modules/accounts/domain.js';
 import { LobbyError, type Lobby, type LobbyRepository } from '../../src/modules/lobbies/domain.js';
+import type { GameService } from '../../src/modules/game/service.js';
 import { LobbyService } from '../../src/modules/lobbies/service.js';
 
 export const origin = 'http://localhost:5173';
@@ -18,7 +19,7 @@ export function memoryLobbies(users: Map<string, User>) {
     create: async (ownerId, input, invitationHash) => {
       const id = randomUUID(); const now = new Date(time++);
       const owner = { id: ownerId, username: users.get(ownerId)!.username };
-      const lobby: Lobby = { ...input, id, status: 'WAITING', owner, invitationHash, createdAt: now,
+      const lobby: Lobby = { ...input, id, gameId: null, status: 'WAITING', owner, invitationHash, createdAt: now,
         members: [{ id: randomUUID(), userId: ownerId, username: owner.username, joinedAt: now }] };
       data.set(id, lobby); return structuredClone(lobby);
     },
@@ -43,7 +44,7 @@ export function memoryLobbies(users: Map<string, User>) {
   return { repo, data };
 }
 
-export async function lobbyFixture() {
+export async function lobbyFixture(createGames?: (memory: ReturnType<typeof memoryLobbies>) => GameService) {
   const users = new Map<string, User>();
   for (const username of ['Owner','Guest','Other','Fourth','Fifth','Sixth','Seventh']) {
     const user = { id: randomUUID(), username, email: `${username.toLowerCase()}@example.test`, passwordHash: 'hash:password', createdAt: new Date() };
@@ -55,7 +56,8 @@ export async function lobbyFixture() {
     create: async () => { throw new Error('Not used in lobby tests'); },
   };
   const memory = memoryLobbies(users); const service = new LobbyService(memory.repo);
-  const app = createApp({ origin, trustProxyHops: 0, checks: { database: async () => {}, redis: async () => {} }, lobbies: service,
+  const games=createGames?.(memory);
+  const app = createApp({ games, origin, trustProxyHops: 0, checks: { database: async () => {}, redis: async () => {} }, lobbies: service,
     accounts: { service: await AccountService.create(repository, { hash: async (p) => `hash:${p}`, verify: async (hash,p) => hash === `hash:${p}` }),
       sessionStore: new session.MemoryStore(), limiter: { consume: async () => ({ count: 1, retryAfterMs: 1000 }) },
       secret: 'lobby-unit-test-session-secret-at-least-32-characters', secureCookies: false, sameSite: 'lax', ttlSeconds: 3600, origin } });
@@ -68,5 +70,5 @@ export async function lobbyFixture() {
     return { agent, csrf, post: (path: string, body: object = {}) => agent.post(path).set('Origin',origin).set('X-CSRF-Token',csrf).send(body),
       leave: (id: string) => agent.delete(`/api/lobbies/${id}/memberships/me`).set('Origin',origin).set('X-CSRF-Token',csrf) };
   }
-  return { app, users, ...memory, service, client };
+  return { app, users, ...memory, service, client, games };
 }
