@@ -14,7 +14,7 @@ Ce document s'adresse à Codex et à Claude Code. Le projet est réalisé en bin
 ## État et périmètre
 
 - Nom provisoire : Loup-Garou API. Dépôt GitHub : `BouchardMehdi/loup-garou-api`.
-- Le socle et les comptes sont implémentés : inscription, sessions Redis, déconnexion et profil privé. Salons, moteur de jeu, chats et statistiques restent à développer ; Socket.IO est encore fermé aux connexions applicatives.
+- Le socle et les comptes sont implémentés : inscription, sessions Redis, déconnexion et profil privé. Salons et participations sont également implémentés ; moteur de jeu, chats et statistiques restent à développer ; Socket.IO est encore fermé aux connexions applicatives.
 - La stack ci-dessous est validée. Consulter back/package.json, le README et deploy.md pour les versions, commandes et procédures disponibles.
 - Ne pas démarrer une nouvelle étape de développement sur la seule base de ce document : respecter la demande en cours.
 - Communiquer et écrire la documentation en français. Utiliser l'anglais pour les identifiants de code et des noms cohérents dans l'API.
@@ -33,7 +33,7 @@ Ce document s'adresse à Codex et à Claude Code. Le projet est réalisé en bin
 ## Règles de la première version
 
 - Source de vérité fonctionnelle : `docs/specifications.md` ; MCD : `docs/data-model.md` ; interfaces futures : `docs/interfaces.md` ; conformité : `docs/requirements.md`.
-- Ces documents décrivent le jeu cible. Le lot comptes est maintenant disponible ; consulter `docs/authentication.md` pour son contrat effectivement implémenté et ses exemples pour le front.
+- Ces documents décrivent le jeu cible. Les lots comptes et salons sont disponibles ; consulter `docs/authentication.md` et `docs/lobbies.md` pour les contrats implémentés et exemples pour le front.
 - 6 à 12 joueurs ; une voyante, un loup pour 6–7 joueurs, deux pour 8–10 et trois pour 11–12, autres joueurs villageois.
 - Victoire du village sans loup vivant ; victoire des loups à parité ou majorité des vivants. Les morts partagent le résultat de leur camp.
 - Départ de nuit, puis débat et vote. Durées entières réglables de 30 à 300 secondes ; valeurs initiales débat/vote/nuit : 180/60/60.
@@ -112,9 +112,9 @@ Les accès sont indépendants de la phase jour/nuit. Le chat public est commun a
 
 ## Structure et déploiement VPS
 
-- Ce dépôt développe uniquement le back-end. Le collègue développe le front séparément ; ne pas créer d’application front ni imposer de framework. `front/` contient seulement une note de coordination.
+- Notre périmètre de travail est le back-end. Le front Vue ajouté par le collègue est présent dans `front/` ; préserver son code et ne pas le modifier sans demande explicite. Documenter les contrats API nécessaires à son intégration.
 - Depuis `back/` : `npm ci`, `npm run typecheck`, `npm run lint`, `npm test`, `npm run build`, `npm run prisma:validate`.
-- Prisma contient User et sa migration initiale. Génération avant typecheck/build, adaptateur PostgreSQL et repository utilisés pour les comptes ; le client généré reste ignoré par Git. Les modèles de jeu restent à ajouter.
+- Prisma contient User, Lobby et LobbyMembership avec leurs migrations. Génération avant typecheck/build, adaptateur PostgreSQL et repository utilisés pour les comptes ; le client généré reste ignoré par Git. Les modèles de partie restent à ajouter.
 - Infrastructure : VPS Linux de l’école, confirmé par l’utilisateur ; Nginx et Certbot sur l’hôte ; API, PostgreSQL et Redis dans Docker Compose. DNS des sous-domaines chez Hostinger ; site principal conservé chez Hostinger.
 - Le dépôt GitHub est public, selon confirmation de l’utilisateur le 19 novembre 2026. Ne pas traiter cette visibilité comme une autorisation de publier des secrets ; GHCR possède ses propres droits d’accès.
 - Conserver à la racine `docker-compose.yml`, `.env.example`, `README.md` et `deploy.md`, à actualiser avec chaque nouvelle variable ou étape d'exploitation.
@@ -138,17 +138,36 @@ Les accès sont indépendants de la phase jour/nuit. Le chat public est commun a
 - Compose lance le service ponctuel migrate avant l’API. Ne pas contourner une migration échouée ni réinitialiser les volumes pour la faire passer.
 - Tests réels PostgreSQL/Redis : uniquement sur une instance isolée avec RUN_INTEGRATION=1 et npm run test:integration. Ne pas lancer les smoke tests sur les données réelles.
 
+## Contrat des salons
+
+- Source du contrat implémenté : `docs/lobbies.md`. Routes : GET/POST /api/lobbies, GET /api/lobbies/{id}, POST /api/lobbies/{id}/memberships, GET/DELETE /api/lobbies/{id}/memberships/me.
+- La chaîne de sécurité du routeur comptes doit précéder les salons : session, expiration, CSRF, Origin et limite globale ; aucune route de salon sans authentification.
+- Seuls les salons publics WAITING sont listés. Un détail privé exige une adhésion active ; code faux/absent et salon privé inaccessible renvoient 404 générique.
+- L’invitation privée contient identifiant du salon + code. Code aléatoire 24 hex uniquement dans la réponse de création, empreinte SHA-256 en base ; ne jamais renvoyer code, empreinte ou e-mails dans les autres représentations.
+- Capacité 6–12, durées 30–300 secondes ; valeurs initiales capacité 12 et débat/vote/nuit 180/60/60. Aucun changement de réglages ni lancement de partie dans ce lot.
+- Arrivées/départs dans une transaction verrouillant la ligne Lobby avec SELECT FOR UPDATE. Le futur lancement doit utiliser le même verrou pour fermer atomiquement les inscriptions.
+- Un index unique partiel SQL garantit une seule adhésion active par utilisateur/salon ; conserver cet index et les CHECK lors des futures migrations. Une réadhésion crée une nouvelle ligne ; leftAt conserve l’historique des départs.
+- Départ du propriétaire : transfert au plus ancien membre restant, départage par ID ; dernier départ : CLOSED. Une déconnexion n’est pas un départ. Les mutations sont refusées hors WAITING.
+- Les membres sont projetés par userId, username et joinedAt, sans données de compte privées. Pagination HAL 25 par défaut, taille 1–100, tri createdAt/id décroissant.
+- Le front existant utilise encore ses données simulées ; ne pas prétendre qu’il est connecté aux nouvelles routes. Socket.IO reste refusé et n’émet pas encore lobby:updated.
+
 ## Décisions encore ouvertes
 
 - Pouvoirs, camps, interactions et droits des futurs rôles exclusifs ; sélection des rôles par salon au-delà de la composition V1.
 - Politique de conservation et de suppression de compte avant utilisation de données réelles.
 - Schémas détaillés des entrées de jeu et messages Socket.IO : à figer dans les prochains lots. Le contrat des comptes et le cycle des sessions sont documentés dans `docs/authentication.md`.
-- Traduction des entités de jeu du MCD en schéma Prisma, transactions et migrations compatibles ; User est déjà implémenté.
+- Traduction des entités de partie du MCD en schéma Prisma, transactions et migrations compatibles ; User, Lobby et LobbyMembership sont déjà implémentés.
 - Revanche dans le même salon, spectateurs, modération et abandon explicite : hors V1, ne pas les ajouter implicitement.
 
 Ne pas présenter ces points comme déjà décidés. Demander une précision lorsqu'une décision conditionne le comportement à implémenter ; poursuivre les travaux indépendants utiles.
 
 ## Commentaires de suivi et évolutions futures
+
+<!--
+2026-11-19 | IMPLÉMENTÉ | Salons publics et privés
+Routes HAL de salons et participations, invitation privée à usage d’affichage unique, pagination, capacité, transfert de propriété, historique et migrations ajoutés. Concurrence vérifiée sur PostgreSQL réel dans Docker. Front Vue du collègue conservé sans modification ; intégration réseau et moteur de jeu restent à réaliser.
+-->
+
 
 <!--
 2026-11-19 | IMPLÉMENTÉ | Comptes back-end et coordination front

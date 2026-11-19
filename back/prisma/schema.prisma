@@ -16,4 +16,49 @@ model User {
   email        String   @unique @db.VarChar(254)
   passwordHash String
   createdAt    DateTime @default(now())
+  ownedLobbies Lobby[] @relation("LobbyOwner")
+  lobbyMemberships LobbyMembership[]
+}
+
+enum LobbyVisibility {
+  PUBLIC
+  PRIVATE
+}
+
+enum LobbyStatus {
+  WAITING
+  IN_GAME
+  FINISHED
+  CLOSED
+}
+
+model Lobby {
+  id String @id @default(uuid()) @db.Uuid
+  name String @db.VarChar(80)
+  visibility LobbyVisibility
+  status LobbyStatus @default(WAITING)
+  capacity Int
+  discussionDurationSeconds Int @default(180)
+  voteDurationSeconds Int @default(60)
+  nightDurationSeconds Int @default(60)
+  invitationHash String? @db.Char(64)
+  ownerId String @db.Uuid
+  owner User @relation("LobbyOwner", fields: [ownerId], references: [id], onDelete: Restrict)
+  createdAt DateTime @default(now())
+  memberships LobbyMembership[]
+
+  @@index([visibility, status, createdAt, id])
+}
+
+model LobbyMembership {
+  id String @id @default(uuid()) @db.Uuid
+  lobbyId String @db.Uuid
+  userId String @db.Uuid
+  lobby Lobby @relation(fields: [lobbyId], references: [id], onDelete: Restrict)
+  user User @relation(fields: [userId], references: [id], onDelete: Restrict)
+  joinedAt DateTime @default(now())
+  leftAt DateTime?
+
+  // Active uniqueness is a partial PostgreSQL index in the versioned migration.
+  @@index([lobbyId, userId, leftAt])
 }

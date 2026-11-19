@@ -46,7 +46,7 @@ jobs:
         run: |
           docker compose up -d --no-build --wait --wait-timeout 120
           curl --fail http://127.0.0.1:3009/api/ready
-      - name: Test accounts with real PostgreSQL and Redis
+      - name: Test accounts and lobbies with real PostgreSQL and Redis
         working-directory: .
         run: |
           docker compose exec -T api node --input-type=module < back/tests/smoke/auth.mjs

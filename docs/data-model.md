@@ -1,6 +1,6 @@
 # Modèle conceptuel de données — première version
 
-Statut : conception cible, partiellement implémentée pour USER. Le modèle USER est désormais traduit dans Prisma avec sa migration ; les autres entités restent à implémenter. Le champ technique usernameKey assure l’unicité insensible à la casse et n’est pas exposé par l’API. Ce document décrit des entités, attributs métier et cardinalités ; les types SQL, index et migrations seront conçus lors de l'implémentation.
+Statut : conception cible, partiellement implémentée pour USER, LOBBY et LOBBY_MEMBERSHIP. Ces trois entités ont leurs modèles Prisma et migrations ; les entités de partie restent à implémenter. Le champ technique usernameKey assure l’unicité insensible à la casse et n’est pas exposé par l’API. Ce document décrit des entités, attributs métier et cardinalités ; les types SQL, index et migrations seront conçus lors de l'implémentation.
 
 Référence : [spécifications](specifications.md).
 
@@ -71,3 +71,7 @@ Le modèle conserve ROLE comme catalogue extensible ; l'ajout de rôles exclusif
 Les contraintes entre plusieurs entités nécessiteront des services métier et transactions, en plus des clés étrangères et unicités. Les actions privées et rôles ne doivent pas être sérialisés automatiquement depuis les entités ORM.
 
 Aucune durée de conservation ni suppression de compte n'est implémentée ici. Définir ces politiques avant utilisation de données réelles, en préservant la cohérence de l'historique et les droits sur les messages.
+
+## Traduction du lot salons
+
+Lobby contient propriétaire, visibilité, état, capacité, durées et empreinte d'invitation ; LobbyMembership contient les entrées et départs avec leftAt facultatif. Les relations ne sont pas supprimées lors d'un départ. L'unicité des adhésions actives est un index partiel SQL explicite dans la migration ; un verrou parent par salon protège capacité et succession. Voir [le contrat détaillé](lobbies.md).

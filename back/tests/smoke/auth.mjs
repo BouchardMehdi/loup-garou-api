@@ -9,7 +9,7 @@ const prisma = new PrismaClient({ adapter: new PrismaPg({ connectionString: data
 const base = 'http://127.0.0.1:3000';
 const suffix = randomUUID().slice(0, 8);
 const data = { username: `Smoke_${suffix}`, email: `${suffix}@example.test`, password: 'smoke-test-password-123' };
-let cookie = ''; let userId;
+let cookie = ''; let userId; const lobbyIds = [];
 async function call(path, { method = 'GET', body, csrf } = {}) {
   const headers = { Origin: process.env.APP_ORIGIN, ...(cookie ? { Cookie: cookie } : {}) };
   if (csrf) headers['X-CSRF-Token'] = csrf;
@@ -34,12 +34,28 @@ try {
   assert.equal(login.response.status, 201); assert.notEqual(cookie, anonymousCookie);
   const authenticatedCookie = cookie;
   assert.equal((await call('/api/me')).result.email, data.email);
+  const publicLobby = await call('/api/lobbies', { method: 'POST', csrf: login.result.csrfToken, body: { name: 'Smoke public lobby', capacity: 6 } });
+  assert.equal(publicLobby.response.status, 201); lobbyIds.push(publicLobby.result.id);
+  assert.equal(publicLobby.result.memberCount, 1);
+  const privateLobby = await call('/api/lobbies', { method: 'POST', csrf: login.result.csrfToken, body: { name: 'Smoke private lobby', visibility: 'PRIVATE' } });
+  assert.equal(privateLobby.response.status, 201); lobbyIds.push(privateLobby.result.id);
+  assert.match(privateLobby.result.invitationCode, /^[A-F0-9]{24}$/);
+  const list = await call('/api/lobbies?page=1&pageSize=100');
+  assert.equal(list.response.status, 200);
+  assert.equal(list.result._embedded.lobbies.some(l => l.id === publicLobby.result.id), true);
+  assert.equal(list.result._embedded.lobbies.some(l => l.id === privateLobby.result.id), false);
+  assert.equal('invitationCode' in (await call(`/api/lobbies/${privateLobby.result.id}`)).result, false);
+  for (const id of lobbyIds) {
+    assert.equal((await call(`/api/lobbies/${id}/memberships/me`, { method: 'DELETE', csrf: login.result.csrfToken })).response.status, 204);
+  }
   assert.equal((await call('/api/sessions/current', { method: 'DELETE', csrf })).response.status, 403);
   assert.equal((await call('/api/sessions/current', { method: 'DELETE', csrf: login.result.csrfToken })).response.status, 204);
   cookie = authenticatedCookie;
   assert.equal((await call('/api/me')).response.status, 401);
-  console.log('Authentication smoke test passed: PostgreSQL, Argon2id, Redis sessions, CSRF, rotation and logout.');
+  console.log('Accounts and lobbies smoke test passed: PostgreSQL, Redis sessions, CSRF, public/private lobbies, leave and logout.');
 } finally {
+  await prisma.lobbyMembership.deleteMany({ where: { lobbyId: { in: lobbyIds } } });
+  await prisma.lobby.deleteMany({ where: { id: { in: lobbyIds } } });
   if (userId) await prisma.user.delete({ where: { id: userId } });
   await prisma.$disconnect();
 }
