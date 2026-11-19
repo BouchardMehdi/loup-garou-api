@@ -5,6 +5,8 @@ import { PrismaPg } from '@prisma/adapter-pg';
 import { PrismaClient } from './generated/prisma/client.js';
 import { prismaUsers, argonPasswords } from './modules/accounts/infrastructure.js';
 import { AccountService } from './modules/accounts/service.js';
+import { LobbyService } from './modules/lobbies/service.js';
+import { prismaLobbies } from './modules/lobbies/infrastructure.js';
 import { redisLimiter } from './http/rate-limit.js';
 import { createApp } from './app.js';
 import { loadConfig } from './config/env.js';
@@ -21,6 +23,7 @@ await deps.redis.connect();
 const prisma = new PrismaClient({ adapter: new PrismaPg(deps.pool) });
 const service = await AccountService.create(prismaUsers(prisma), argonPasswords);
 const app = createApp({ origin: config.APP_ORIGIN, trustProxyHops: config.TRUST_PROXY_HOPS,
+  lobbies: new LobbyService(prismaLobbies(prisma)),
   nodeEnv: config.NODE_ENV, checks: deps.checks, onError: () => { logger.error('Unhandled HTTP error'); },
   accounts: { service, sessionStore: new RedisStore({ client: deps.redis, prefix: 'loup:session:', disableTouch: true }),
     limiter: redisLimiter(deps.redis), secret: config.SESSION_SECRET,

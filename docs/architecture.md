@@ -42,13 +42,13 @@ La cible est le VPS de l'école, confirmé par le propriétaire. Le port hôte e
 - `src/infrastructure/` : connexions PostgreSQL/Redis, actuellement utilisées pour la readiness.
 - `src/realtime/` : serveur Socket.IO ; connexions refusées tant que l'authentification n'est pas implémentée.
 - `src/modules/` : comptes, salons, moteur de jeu, chat et statistiques, encore non implémentés.
-- `prisma/` : modèle User et première migration ; le repository des comptes utilise Prisma. Les modèles de jeu restent à ajouter.
+- `prisma/` : User, Lobby, LobbyMembership et deux migrations ; repositories comptes et salons basés sur Prisma. Les entités de partie restent à ajouter.
 
 ## Étapes suivantes
 
 Documents de conception : [spécifications](specifications.md), [MCD](data-model.md), [contrats préliminaires](interfaces.md) et [suivi des exigences](requirements.md).
 
-Les comptes sont livrés avec sessions Redis, Argon2id, protection CSRF et limitation des requêtes : voir le [contrat pour le front](authentication.md). Le front est réalisé séparément par le collègue ; aucune application front n’est ajoutée ici. Les règles et canaux du jeu restent à développer, et Socket.IO reste fermé aux connexions applicatives.
+Les comptes sont livrés avec sessions Redis, Argon2id, protection CSRF et limitation des requêtes : voir le [contrat pour le front](authentication.md). Le front est réalisé séparément par le collègue ; aucune application front n’est ajoutée ici. Les salons et participations sont disponibles selon [leur contrat](lobbies.md). Les règles et canaux du jeu restent à développer, et Socket.IO reste fermé aux connexions applicatives.
 
 L'instrumentation OpenTelemetry/Jaeger, l'adaptateur Redis Socket.IO et le déploiement de plusieurs instances restent à implémenter. La configuration actuelle lance une seule instance : Nginx agit comme reverse proxy, sans répartition effective entre plusieurs serveurs. Le load balancing demandé dans le cours nécessitera une étape dédiée.
 
@@ -83,3 +83,11 @@ Les chronomètres serveur déclencheront les mêmes cas d'usage de résolution q
 Le premier essai des tests d'intégration depuis Windows n'a pas pu joindre les bases publiées sur des ports temporaires ; la vérification réussie et reproductible est désormais exécutée sur le réseau Docker. Le fichier Compose de développement permet aussi l'accès local aux bases avec un réseau non interne, tout en gardant les ports liés à localhost. Cette exception ne s'applique pas à la production.
 
 Aucune vérification de production distante ni résultat de CI GitHub n'est déduit de ces tests locaux.
+
+## Vérification du lot salons — 19 novembre 2026
+
+26 tests unitaires et 9 tests d'intégration réussis, incluant les comptes. Sur PostgreSQL réel, les tests couvrent arrivées concurrentes sur la dernière place, double adhésion, index d'unicité active, départ/réadhésion conservant l'historique, transfert et fermeture cohérents.
+
+Les images Docker ont été construites, le parcours HTTP comptes + salons a réussi et les deux migrations sont réexécutables sans modification quand déjà appliquées. Les vérifications utilisent un projet éphémère séparé ; ses conteneurs et volumes ont été supprimés après succès. Aucune modification du front ni déploiement distant n'est inclus dans ce lot.
+
+Le futur lancement d'une partie devra verrouiller la même ligne Lobby que les adhésions. Sans cette règle commune, une inscription pourrait encore se produire pendant une attribution des rôles. La documentation fonctionnelle et le MCD décrivent déjà cette prochaine étape, mais elle n'est pas implémentée.

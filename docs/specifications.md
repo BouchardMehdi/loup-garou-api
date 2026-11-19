@@ -1,6 +1,6 @@
 # Spécifications fonctionnelles — première version
 
-Statut : conception validée le 19 novembre 2026, à implémenter. Les comptes et sessions sont maintenant disponibles selon le [guide d’authentification](authentication.md) ; les parties et chats restent à implémenter. Référence du cours : « projet-consignes.pdf » fourni par l'enseignant en novembre 2026.
+Statut : conception validée le 19 novembre 2026, à implémenter. Les comptes et sessions sont disponibles selon le [guide d’authentification](authentication.md), ainsi que les [salons et participations](lobbies.md). Les parties et chats restent à implémenter. Référence du cours : « projet-consignes.pdf » fourni par l'enseignant en novembre 2026.
 
 Documents associés : [MCD](data-model.md), [interfaces préliminaires](interfaces.md), [architecture et contexte C4](architecture.md), [suivi des exigences](requirements.md).
 
@@ -122,4 +122,4 @@ Ces scénarios sont à convertir en tests lors du développement ; ils ne décri
 
 ## 8. Évolutions hors de cette branche
 
-Les comptes et sessions constituent le premier lot livré. Développer ensuite les salons et le moteur de jeu avec migrations et tests. Les futurs rôles exclusifs devront décrire camp, pouvoir, phase, limites, interactions, victoire et droits de chat avant leur implémentation. La documentation de conception seule ne prouve pas la conformité technique du produit final.
+Comptes, sessions et salons sont livrés. Développer ensuite le lancement et le moteur de jeu avec migrations et tests. Les futurs rôles exclusifs devront décrire camp, pouvoir, phase, limites, interactions, victoire et droits de chat avant leur implémentation. La documentation de conception seule ne prouve pas la conformité technique du produit final.
