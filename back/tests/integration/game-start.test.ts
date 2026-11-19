@@ -32,6 +32,7 @@ beforeAll(async()=>{
 afterAll(async()=>{
   try{
     const gameIds=(await prisma.game.findMany({where:{lobbyId:{in:lobbyIds}},select:{id:true}})).map(g=>g.id);
+    await prisma.nightAction.deleteMany({where:{gameId:{in:gameIds}}});await prisma.villageVote.deleteMany({where:{gameId:{in:gameIds}}});
     await prisma.gamePhase.deleteMany({where:{gameId:{in:gameIds}}});
     await prisma.gameParticipant.deleteMany({where:{gameId:{in:gameIds}}});await prisma.game.deleteMany({where:{id:{in:gameIds}}});
     await prisma.lobbyMembership.deleteMany({where:{lobbyId:{in:lobbyIds}}});await prisma.lobby.deleteMany({where:{id:{in:lobbyIds}}});

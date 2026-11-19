@@ -1,6 +1,6 @@
 # Lancement des parties — contrat back-end
 
-Cette étape permet de démarrer une partie, d'attribuer les rôles et de lire les informations autorisées. Le front du collègue n'est pas modifié. Les actions nocturnes, votes, éliminations, victoire, chats et notifications Socket.IO ne sont pas encore implémentés.
+Cette étape permet de démarrer une partie, d'attribuer les rôles et de lire les informations autorisées. Le front du collègue n'est pas modifié. Les actions nocturnes, votes, éliminations et victoire sont désormais disponibles selon le [contrat du moteur](game-engine.md). Les chats et notifications Socket.IO restent à développer.
 
 ## Routes disponibles
 
@@ -9,7 +9,7 @@ Toutes les routes exigent une session valide, avec les cookies et protections d�
 | Méthode et chemin | Comportement |
 | --- | --- |
 | `POST /api/lobbies/{lobbyId}/games` | Le propriétaire lance une seule partie ; corps absent ou `{}` uniquement ; Origin et CSRF exigés |
-| `GET /api/games/{gameId}` | Un participant lit la projection collective sans rôles |
+| `GET /api/games/{gameId}` | Un participant lit la projection collective sans rôles avant la fin |
 | `GET /api/games/{gameId}/participants/me` | Le participant lit uniquement son rôle et les coéquipiers autorisés |
 
 Les liens HAL permettent de naviguer entre la partie, le salon et sa participation personnelle. Le détail du salon inclut désormais `gameId` (null avant lancement) et `_links.game` après lancement : les autres membres peuvent ainsi découvrir la partie en relisant le salon, sans connaître la réponse de création du propriétaire.
@@ -67,20 +67,20 @@ Exemple de structure, avec identifiants et dates illustratifs :
 }
 ```
 
-« Collectif » signifie commun aux participants, pas accessible à tout Internet. Les non-participants reçoivent 404, que le salon d'origine soit public ou privé. Aucun rôle, camp individuel, empreinte d'invitation, e-mail ou hash de mot de passe n'est présent dans cet état. Les réponses utilisent `Cache-Control: no-store`.
+« Collectif » signifie commun aux participants, pas accessible à tout Internet. Les non-participants reçoivent 404, que le salon d'origine soit public ou privé. Pendant la partie, aucun rôle ou camp individuel n'est présent dans cet état ; les rôles et camps sont révélés aux participants après FINISHED. Aucune empreinte d'invitation, aucun e-mail ni hash de mot de passe n'est exposé. Les réponses utilisent `Cache-Control: no-store`.
 
-La première nuit est enregistrée avec son échéance calculée côté serveur. **Aucun ordonnanceur ni passage automatique de phase n'est livré ici** : même après l'échéance, l'état reste sur cette nuit jusqu'à l'implémentation du moteur. L'interface doit présenter cet état comme une étape de développement, sans simuler des actions ou une progression censées être traitées par l'API.
+La première nuit et son échéance sont persistées. Le moteur résout maintenant automatiquement les phases, au dernier choix attendu ou à échéance, puis reprend les parties échues au redémarrage. Le front doit lire la progression serveur ; voir [les règles de reprise et le contrat HTTP](game-engine.md). La représentation ajoute `lastResolution`, null avant toute résolution.
 
 ## Rôle personnel
 
-La route `/participants/me` ne prend aucun identifiant de cible. Elle renvoie id, gameId, userId, username, role, team, status, teammates et `_links`.
+La route `/participants/me` ne prend aucun identifiant de cible. Elle renvoie id, gameId, userId, username, role, team, status, teammates, currentChoice, inspections et `_links`.
 
 - `role` : `VILLAGER`, `WEREWOLF` ou `SEER`.
 - `team` : `VILLAGE` pour villageois/voyante, `WEREWOLVES` pour les loups.
 - `teammates` : autres loups vivants (id, userId, username, status), uniquement si l'appelant est lui-même un loup vivant. Le tableau est vide pour les autres rôles et les morts.
-- La voyante ne connaît à ce stade que son propre rôle ; son pouvoir de découverte viendra avec les actions nocturnes.
+- La voyante reçoit ses découvertes privées par les actions nocturnes et peut les relire dans `inspections`.
 
-Les rôles secrets sont liés aux participations de partie et non au compte utilisateur. Les logs ne doivent contenir ni les objets ORM de partie ni les réponses personnelles. Une liste publique de rôles, une route de rôle ciblant un autre joueur et le choix de son rôle par le client ne sont pas exposés.
+Les rôles secrets sont liés aux participations de partie et non au compte utilisateur. Les logs ne doivent contenir ni les objets ORM de partie ni les réponses personnelles. Aucune liste de rôles avant la fin, aucune route de rôle arbitraire et aucun choix de rôle par le client ne sont exposés.
 
 ## Erreurs et verrouillage
 

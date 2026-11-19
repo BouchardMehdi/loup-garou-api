@@ -87,6 +87,7 @@ model Role {
   name String @db.VarChar(80)
   team GameTeam
   participants GameParticipant[]
+  inspections NightAction[] @relation("InspectedRole")
 }
 model Game {
   id String @id @default(uuid()) @db.Uuid
@@ -114,6 +115,13 @@ model GameParticipant {
   status ParticipantStatus @default(ALIVE)
   eliminatedAt DateTime?
 
+  nightActions NightAction[] @relation("NightActor")
+  nightTargets NightAction[] @relation("NightTarget")
+  votes VillageVote[] @relation("VoteActor")
+  votedBy VillageVote[] @relation("VoteTarget")
+  eliminatedIn GamePhase[] @relation("PhaseVictim")
+
+  @@unique([id, gameId])
   @@unique([gameId, userId])
 }
 model GamePhase {
@@ -125,6 +133,45 @@ model GamePhase {
   startedAt DateTime
   deadline DateTime
   resolvedAt DateTime?
+  eliminatedParticipantId String? @db.Uuid
+  eliminatedParticipant GameParticipant? @relation("PhaseVictim", fields: [eliminatedParticipantId, gameId], references: [id, gameId], onDelete: Restrict)
+  nightActions NightAction[]
+  votes VillageVote[]
 
+  @@unique([id, gameId])
   @@unique([gameId, cycle, type])
+}
+
+enum NightActionKind {
+  WOLF_ATTACK
+  SEER_INSPECT
+}
+model NightAction {
+  id String @id @default(uuid()) @db.Uuid
+  gameId String @db.Uuid
+  phaseId String @db.Uuid
+  phase GamePhase @relation(fields: [phaseId, gameId], references: [id, gameId], onDelete: Restrict)
+  actorId String @db.Uuid
+  actor GameParticipant @relation("NightActor", fields: [actorId, gameId], references: [id, gameId], onDelete: Restrict)
+  targetId String? @db.Uuid
+  target GameParticipant? @relation("NightTarget", fields: [targetId, gameId], references: [id, gameId], onDelete: Restrict)
+  kind NightActionKind
+  inspectedRoleCode String? @db.VarChar(32)
+  inspectedRole Role? @relation("InspectedRole", fields: [inspectedRoleCode], references: [code], onDelete: Restrict)
+  createdAt DateTime
+
+  @@unique([phaseId, actorId])
+}
+model VillageVote {
+  id String @id @default(uuid()) @db.Uuid
+  gameId String @db.Uuid
+  phaseId String @db.Uuid
+  phase GamePhase @relation(fields: [phaseId, gameId], references: [id, gameId], onDelete: Restrict)
+  actorId String @db.Uuid
+  actor GameParticipant @relation("VoteActor", fields: [actorId, gameId], references: [id, gameId], onDelete: Restrict)
+  targetId String? @db.Uuid
+  target GameParticipant? @relation("VoteTarget", fields: [targetId, gameId], references: [id, gameId], onDelete: Restrict)
+  createdAt DateTime
+
+  @@unique([phaseId, actorId])
 }

@@ -1,6 +1,6 @@
 # Contrats d'interface préliminaires
 
-Statut : contrats cibles ; les routes de comptes, sessions et salons sont implémentées. Voir le [guide d’authentification](authentication.md) et le [contrat des salons](lobbies.md). Le [lancement des parties et les lectures de rôles personnels](game-start.md) sont également implémentés ; les actions de jeu restent futures ; Socket.IO refuse encore les connexions applicatives. Références : [règles](specifications.md), [MCD](data-model.md).
+Statut : contrats cibles ; les routes de comptes, sessions et salons sont implémentées. Voir le [guide d’authentification](authentication.md) et le [contrat des salons](lobbies.md). Le [lancement des parties et les lectures de rôles personnels](game-start.md) sont également implémentés ; les [actions, votes et résolutions automatiques](game-engine.md) sont également disponibles ; Socket.IO refuse encore les connexions applicatives. Références : [règles](specifications.md), [MCD](data-model.md).
 
 ## 1. Principes communs
 
@@ -12,7 +12,7 @@ Représentations de ressources et collections : `application/hal+json` avec `_li
 
 Chaque création HTTP renvoie 201 et un header `Location` ; une suppression de session ou d'appartenance réussie renvoie 204. Les lectures réussies renvoient 200. Les formes détaillées des entrées seront inscrites dans OpenAPI au moment du développement de chaque lot.
 
-## 2. Ressources HTTP — comptes, salons et lancement disponibles, actions à venir
+## 2. Ressources HTTP — comptes, salons, lancement et actions disponibles ; chat/statistiques à venir
 
 | Méthode et chemin | Responsabilité | Accès et principales données |
 | --- | --- | --- |
@@ -30,6 +30,8 @@ Chaque création HTTP renvoie 201 et un header `Location` ; une suppression de s
 | `GET /api/games/{gameId}/participants/me` | Consulter son rôle et son état | Soi-même ; coéquipiers loups si applicable, résultat d'inspection personnel |
 | `POST /api/games/{gameId}/phases/{phaseId}/night-actions` | Valider son action nocturne | Acteur vivant attendu ; cible ou abstention ; résultat de voyance privé |
 | `POST /api/games/{gameId}/phases/{phaseId}/votes` | Valider son bulletin | Votant vivant ; cible ou abstention, un choix définitif |
+| `GET /api/games/{gameId}/phases/{phaseId}/night-actions/me` | Relire son action | Participant ; sa propre action uniquement, y compris après résolution |
+| `GET /api/games/{gameId}/phases/{phaseId}/votes/me` | Relire son bulletin | Participant ; son propre bulletin uniquement |
 | `GET /api/games/{gameId}/channels/{channel}/messages` | Lire un historique de canal | Participant actuellement autorisé ; collection paginée, y compris après-partie |
 | `GET /api/me/games` | Lire ses parties terminées | Soi-même ; collection paginée avec résultat personnel |
 | `GET /api/statistics/players` | Lire les statistiques publiques | Connecté ; pseudonymes et compteurs, collection paginée et cache Redis |
@@ -73,4 +75,4 @@ Le serveur expose `/api/docs/`, `/api/openapi.json` et désormais `/doc` en dév
 
 Le module comptes ajoute aussi `GET /api/csrf`, `GET /api/users/{userId}` limité à soi-même et `GET /api/sessions/current`. Son guide est la référence pour les validations et statuts effectivement implémentés.
 
-Ces contrats guident les prochains lots de jeu. Les schémas détaillés du jeu, limites des messages et tests de validation seront figés dans le lot concerné avant son implémentation ; toute évolution devra être répercutée dans les deux fichiers d'agents et OpenAPI.
+Les schémas HTTP du moteur sont disponibles dans OpenAPI et [game-engine.md](game-engine.md). Les limites des messages et contrats Socket.IO seront figés dans le lot chat ; toute évolution devra être répercutée dans les deux fichiers d'agents et OpenAPI.

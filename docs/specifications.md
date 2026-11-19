@@ -1,6 +1,6 @@
 # Spécifications fonctionnelles — première version
 
-Statut : conception validée le 19 novembre 2026, à implémenter. Les comptes et sessions sont disponibles selon le [guide d’authentification](authentication.md), ainsi que les [salons et participations](lobbies.md). Le [lancement et les rôles personnels](game-start.md) sont disponibles ; la résolution des phases et les chats restent à implémenter. Référence du cours : « projet-consignes.pdf » fourni par l'enseignant en novembre 2026.
+Statut : conception validée le 19 novembre 2026, partiellement implémentée. Les comptes et sessions sont disponibles selon le [guide d’authentification](authentication.md), ainsi que les [salons et participations](lobbies.md). Le [lancement et les rôles personnels](game-start.md) sont disponibles ; les [actions, transitions et victoires](game-engine.md) sont implémentées. Les chats, historique paginé et statistiques restent à développer. Référence du cours : « projet-consignes.pdf » fourni par l'enseignant en novembre 2026.
 
 Documents associés : [MCD](data-model.md), [interfaces préliminaires](interfaces.md), [architecture et contexte C4](architecture.md), [suivi des exigences](requirements.md).
 
@@ -73,7 +73,7 @@ Le débat dure jusqu'à son échéance. Les bulletins individuels restent privé
 
 ### Concurrence et reprise
 
-Une seule résolution est autorisée par phase. Actions, échéances, choix validés et résultats doivent être persistés ; un redémarrage ne redistribue pas les rôles et n'efface pas les votes. À la reprise, résoudre les phases échues puis reprendre la progression. Les traitements simultanés ne doivent pas produire plusieurs éliminations, plusieurs parties pour un salon ou plusieurs votes d'un même joueur.
+Une seule résolution est autorisée par phase. Actions, échéances, choix validés et résultats doivent être persistés ; un redémarrage ne redistribue pas les rôles et n'efface pas les votes. À la reprise, résoudre les phases échues puis reprendre la progression. Chaque nouvelle phase débute à la résolution effective et reçoit sa durée entière, sans dérouler plusieurs cycles manqués. Les traitements simultanés ne doivent pas produire plusieurs éliminations, plusieurs parties pour un salon ou plusieurs votes d'un même joueur.
 
 Les déconnexions n'arrêtent pas le chronomètre, ne tuent pas le joueur et ne le font pas changer de camp. À la reconnexion, restituer l'état courant autorisé. Si tous s'abstiennent ou sont absents, les phases peuvent continuer sans élimination ; aucun gagnant ou abandon automatique n'est inventé pour ce cas dans cette version.
 
@@ -122,4 +122,4 @@ Ces scénarios sont à convertir en tests lors du développement ; ils ne décri
 
 ## 8. Évolutions hors de cette branche
 
-Comptes, sessions, salons et lancement sont livrés. Développer ensuite actions, résolution des phases et victoire avec migrations et tests. Les futurs rôles exclusifs devront décrire camp, pouvoir, phase, limites, interactions, victoire et droits de chat avant leur implémentation. La documentation de conception seule ne prouve pas la conformité technique du produit final.
+Comptes, sessions, salons, lancement, actions, résolution et victoire sont livrés. Développer ensuite les chats, historique et statistiques avec migrations et tests. Les futurs rôles exclusifs devront décrire camp, pouvoir, phase, limites, interactions, victoire et droits de chat avant leur implémentation. La documentation de conception seule ne prouve pas la conformité technique du produit final.

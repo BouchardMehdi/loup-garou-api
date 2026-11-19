@@ -1,6 +1,6 @@
 # Déploiement sur le VPS Linux de l’école
 
-Ce guide concerne le socle API. Il ne déploie pas les fonctionnalités de jeu encore absentes et n'effectue aucune action sur le VPS à lui seul.
+Ce guide concerne l’API avec comptes, salons et moteur de jeu. Les chats et statistiques restent à développer ; ce guide ne les ajoute pas et n'effectue aucune action sur le VPS à lui seul.
 
 ## Infrastructure retenue
 
@@ -127,7 +127,7 @@ Ne pas exécuter `docker compose down` pour une mise à jour habituelle. Ne pas 
 
 ### Migrations de base de données
 
-Les migrations créent les comptes, salons et participations, puis ajoutent le catalogue de rôles, les parties, les participants et phases initiales, sans supprimer les comptes existants. L’index partiel d’adhésion active et les CHECK métier sont intégrés à la seconde migration ; la troisième initialise les rôles et garantit une seule phase ouverte par partie. Conserver ces index dans les migrations futures. `docker compose up -d --build` reconstruit l’API et l’outil de migration ; le service ponctuel `migrate` exécute `prisma migrate deploy` avant le démarrage de l’API. Une base neuve est initialisée et une base déjà à jour ne rejoue pas les migrations appliquées.
+Les migrations créent les comptes, salons et participations, puis ajoutent le catalogue de rôles, les parties, les participants et phases initiales, sans supprimer les comptes existants. L’index partiel d’adhésion active et les CHECK métier sont intégrés à la seconde migration ; la troisième initialise les rôles et garantit une seule phase ouverte par partie. La quatrième migration ajoute actions, votes, victime de phase, clés étrangères composites et index des échéances. Conserver ces index dans les migrations futures. `docker compose up -d --build` reconstruit l’API et l’outil de migration ; le service ponctuel `migrate` exécute `prisma migrate deploy` avant le démarrage de l’API. Une base neuve est initialisée et une base déjà à jour ne rejoue pas les migrations appliquées.
 
 Sauvegarder avant toute évolution de schéma. Pour une livraison nécessitant un contrôle séparé :
 
@@ -163,3 +163,7 @@ Le workflow `image.yml` teste puis publie une image `ghcr.io/bouchardmehdi/loup-
 Les cookies sont Secure en production : le front doit appeler l’API en HTTPS et utiliser `credentials: include`. Nginx transmet déjà `X-Forwarded-Proto` ; `TRUST_PROXY_HOPS=1` correspond à cet unique proxy. Ne pas activer le mode développement sur le VPS pour contourner un problème de cookie.
 
 Aucun déploiement automatique, secret VPS, utilisateur distant ni connexion SSH n'est configuré par ces fichiers. OpenTelemetry/Jaeger et la supervision distante restent à intégrer.
+
+## Reprise des parties et ordonnanceur
+
+`GAME_TICK_INTERVAL_MS=1000` règle le contrôle des échéances (250–60000 ms). Le worker est inclus dans l’API : aucun cron ni conteneur supplémentaire. Au redémarrage, il résout les phases échues depuis PostgreSQL ; la nouvelle phase commence avec sa durée entière. Les volumes PostgreSQL doivent donc être conservés lors des mises à jour. Plusieurs traitements sont sérialisés par verrou de partie ; le Compose actuel conserve une seule instance. Aucun chat ni événement Socket.IO métier n’est encore disponible. Voir [le contrat du moteur](docs/game-engine.md).

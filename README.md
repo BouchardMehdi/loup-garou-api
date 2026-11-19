@@ -5,15 +5,16 @@ Back-end multijoueur réalisé en binôme pour un cours de développement d'API.
 ## État du projet
 
 Le socle technique est exécutable : Express, Socket.IO, validation de configuration, logs JSON, documentation OpenAPI, routes de santé, tests et Docker.
-Les comptes, sessions et salons publics/privés sont implémentés. Le lancement des parties et les rôles initiaux sont disponibles. Les actions, changements de phase, votes, chats et statistiques restent à développer. Les connexions Socket.IO sont volontairement refusées jusqu'à l'ajout des sessions et autorisations.
+Les comptes, sessions et salons publics/privés sont implémentés. Le lancement des parties et les rôles initiaux sont disponibles. Les actions nocturnes, transitions automatiques, votes, éliminations et victoire sont disponibles. Chats, historique paginé et statistiques restent à développer. Les connexions Socket.IO sont volontairement refusées jusqu'à l'ajout des sessions et autorisations.
 
 ## Documents de conception
 
-La première version du jeu est spécifiée ; les comptes, sessions, salons et le lancement des parties sont implémentés à ce stade. Ce dépôt développe le back-end ; le front est réalisé séparément par le collègue.
+La première version du jeu est spécifiée ; les comptes, sessions, salons, lancement et moteur de jeu sont implémentés à ce stade. Ce dépôt développe le back-end ; le front est réalisé séparément par le collègue.
 
 - [Authentification : contrat pour le front](docs/authentication.md).
 - [Salons : routes, invitations, pagination et règles de participation](docs/lobbies.md).
 - [Lancement des parties et rôles personnels](docs/game-start.md).
+- [Moteur : actions, votes, échéances, éliminations et victoire](docs/game-engine.md).
 
 - [Spécifications fonctionnelles et scénarios d'acceptation](docs/specifications.md).
 - [Modèle conceptuel de données (MCD)](docs/data-model.md).
@@ -21,7 +22,7 @@ La première version du jeu est spécifiée ; les comptes, sessions, salons et l
 - [Contrats HTTP et Socket.IO préliminaires](docs/interfaces.md).
 - [Suivi des exigences et preuves attendues au rendu](docs/requirements.md).
 
-Règles retenues : 6 à 12 joueurs ; une voyante et 1, 2 ou 3 loups selon l'effectif ; victoire des loups à parité ; égalité sans élimination. Débat, vote et nuit sont réglables entre 30 et 300 secondes (valeurs initiales 180/60/60). Les déconnexions ne suppriment pas les participants. Après la partie, les rôles sont révélés et un canal commun est ouvert.
+Règles retenues : 6 à 12 joueurs ; une voyante et 1, 2 ou 3 loups selon l'effectif ; victoire des loups à parité ; égalité sans élimination. Débat, vote et nuit sont réglables entre 30 et 300 secondes (valeurs initiales 180/60/60). Les déconnexions ne suppriment pas les participants. Après la partie, les rôles sont révélés aux participants ; un canal commun est prévu avec le lot chat.
 
 ## Stack
 
@@ -79,6 +80,7 @@ L'API est publiée uniquement sur `127.0.0.1`. PostgreSQL et Redis n'ont aucun p
 - `/api/csrf`, `/api/users`, `/api/sessions`, `/api/me` : [parcours des comptes](docs/authentication.md).
 - `/api/lobbies` et participations : [contrat des salons](docs/lobbies.md).
 - `/api/lobbies/{id}/games`, `/api/games/{id}` et `/api/games/{id}/participants/me` : [lancement et rôles](docs/game-start.md).
+- `/api/games/{id}/phases/{phaseId}/night-actions` et `/votes`, avec lectures `/me` : [moteur de jeu](docs/game-engine.md).
 - `/api/openapi.json` : contrat OpenAPI.
 - `/socket.io/` : transport Socket.IO réservé, sans événements métier ni connexions authentifiées à ce stade.
 
@@ -121,7 +123,7 @@ Pour les tests réels sur une configuration locale isolée : `docker compose --p
 
 ## Prisma
 
-Les modèles des comptes, salons, rôles, parties, participants et phases initiales et leurs migrations sont versionnés. Le client Prisma est généré avant `typecheck` et `build` ; il reste ignoré par Git. Les repositories des comptes utilisent Prisma via l'adaptateur PostgreSQL.
+Les modèles des comptes, salons, rôles, parties, participants et phases, actions et votes avec leurs quatre migrations sont versionnés. Le client Prisma est généré avant `typecheck` et `build` ; il reste ignoré par Git. Les repositories des comptes utilisent Prisma via l'adaptateur PostgreSQL.
 
 Compose applique `prisma migrate deploy` avec le service ponctuel `migrate`, puis démarre l'API uniquement en cas de succès. Pour créer une future migration, utiliser la base de développement avec `npm run db:migrate:dev -- --name description`. Ne pas utiliser `migrate dev` ou `db push` en production.
 
@@ -147,7 +149,7 @@ Ces accès s'appliquent pendant la partie à tout moment, indépendamment du jou
 ## Travail en binôme et automatisation
 
 Les consignes Codex/Claude sont dans `AGENTS.md` et `CLAUDE.md`, dont les contenus doivent rester identiques.
-Travailler par branches et pull requests. La CI vérifie types, lint, tests, build, schéma Prisma, égalité des consignes, configuration Compose, construction de l'image et démarrage avec PostgreSQL/Redis, avec des smoke tests des comptes, salons et du lancement de partie.
+Travailler par branches et pull requests. La CI vérifie types, lint, tests, build, schéma Prisma, égalité des consignes, configuration Compose, construction de l'image et démarrage avec PostgreSQL/Redis, avec des smoke tests des comptes, salons et d’une partie complète à six sessions. L’ordonnanceur reprend les échéances persistées au démarrage ; `GAME_TICK_INTERVAL_MS` règle sa fréquence (1000 ms par défaut).
 Un tag `v*` déclenche également les vérifications puis publie une image versionnée dans GHCR. Aucun accès au VPS ni déploiement distant automatique n'est configuré.
 
 Un premier scénario de charge HTTP est dans `load/health.js` : `k6 run load/health.js` contre une instance de test locale. Il ne couvre pas encore Socket.IO.

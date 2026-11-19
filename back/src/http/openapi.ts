@@ -10,7 +10,7 @@ const healthSchema = {
 export const openApiDocument = {
   openapi: '3.0.3',
   info: { title: 'Loup-Garou API', version: '0.1.0',
-    description: 'API back-end : Comptes, salons et lancement des parties disponibles. Actions de jeu et chats à venir.' },
+    description: 'API back-end : Comptes, salons et moteur de jeu disponibles : actions nocturnes, votes, éliminations et victoire. Chats et statistiques à venir.' },
   components: { ...accountComponents, schemas: { ...lobbySchemas, ...gameSchemas } },
   paths: {
     ...accountPaths,

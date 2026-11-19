@@ -1,3 +1,4 @@
+import {personalChoice} from './engine.js';
 import { randomInt } from 'node:crypto';
 import { GameError, teamOf, type Game, type GameRepository, type RoleCode } from './domain.js';
 
@@ -41,6 +42,8 @@ export class GameService {
   async personal(id: string, userId: string) {
     const game=await this.get(id,userId); const self=game.participants.find((p) => p.userId===userId)!;
     return { id: self.id,gameId: game.id,userId: self.userId,username: self.username,
+      currentChoice: (()=>{const c=(game.choices??[]).find(c=>c.userId===userId&&game.phases.some(p=>p.id===c.phaseId&&p.resolvedAt===null));return c?personalChoice(c,game.id):null;})(),
+      inspections: self.role==='SEER'?(game.choices??[]).filter(c=>c.userId===userId&&c.kind==='SEER_INSPECT'&&c.inspectionRole!==null).map(c=>({phaseId:c.phaseId,targetUserId:c.targetUserId,role:c.inspectionRole,createdAt:c.createdAt.toISOString()})):[],
       role: self.role,team: teamOf(self.role),status: self.status,
       teammates: self.role==='WEREWOLF' && self.status==='ALIVE'
         ? game.participants.filter((p) => p.role==='WEREWOLF' && p.status==='ALIVE' && p.userId!==userId)
@@ -50,10 +53,12 @@ export class GameService {
 
 export function publicGame(game: Game) {
   const phase=game.phases.find((p) => p.resolvedAt===null);
-  return { id: game.id,lobbyId: game.lobbyId,status: game.status,startedAt: game.startedAt.toISOString(),
+  const phaseOrder={NIGHT:0,DAY_DISCUSSION:1,DAY_VOTE:2};
+  const last=game.phases.filter(p=>p.resolvedAt!==null).sort((a,b)=>b.resolvedAt!.getTime()-a.resolvedAt!.getTime()||b.startedAt.getTime()-a.startedAt.getTime()||b.cycle-a.cycle||phaseOrder[b.type]-phaseOrder[a.type])[0];
+  return { id: game.id,lastResolution:last?{phaseId:last.id,type:last.type,cycle:last.cycle,resolvedAt:last.resolvedAt!.toISOString(),eliminatedUserId:game.participants.find(p=>p.id===last.eliminatedParticipantId)?.userId??null}:null,lobbyId: game.lobbyId,status: game.status,startedAt: game.startedAt.toISOString(),
     finishedAt: game.finishedAt?.toISOString() ?? null,winner: game.winner,
     discussionDurationSeconds: game.discussionDurationSeconds,voteDurationSeconds: game.voteDurationSeconds,nightDurationSeconds: game.nightDurationSeconds,
     phase: phase ? { id: phase.id,type: phase.type,cycle: phase.cycle,startedAt: phase.startedAt.toISOString(),deadline: phase.deadline.toISOString() } : null,
-    participants: game.participants.map((p) => ({ id: p.id,userId: p.userId,username: p.username,status: p.status,eliminatedAt: p.eliminatedAt?.toISOString() ?? null })),
+    participants: game.participants.map((p) => ({ id: p.id,userId: p.userId,username: p.username,status: p.status,eliminatedAt: p.eliminatedAt?.toISOString() ?? null,...(game.status==='FINISHED'?{role:p.role,team:teamOf(p.role)}:{}) })),
     _links: { self: { href: `/api/games/${game.id}` },lobby: { href: `/api/lobbies/${game.lobbyId}` },participant: { href: `/api/games/${game.id}/participants/me` } } };
 }

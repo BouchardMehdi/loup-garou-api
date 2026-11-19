@@ -1,21 +1,23 @@
 import type { PrismaClient, Prisma } from '../../generated/prisma/client.js';
 import { GameError, type Game, type GameRepository, type RoleCode } from './domain.js';
 
-const include = { participants: { orderBy: { id: 'asc' } }, phases: { orderBy: [{ cycle: 'asc' },{ startedAt: 'asc' }] } } satisfies Prisma.GameInclude;
+export const gameInclude = { participants: { orderBy: { id: 'asc' } }, phases: { include: {nightActions:true,votes:true}, orderBy: [{ cycle: 'asc' },{ startedAt: 'asc' }] } } satisfies Prisma.GameInclude;
+const include=gameInclude;
 type StoredGame = Prisma.GameGetPayload<{ include: typeof include }>;
 function role(code: string): RoleCode {
   if (code==='VILLAGER' || code==='WEREWOLF' || code==='SEER') return code;
   throw new Error('Unsupported persisted role');
 }
-function map(game: StoredGame): Game {
+export function mapGame(game: StoredGame): Game {
   return { id: game.id,lobbyId: game.lobbyId,status: game.status,startedAt: game.startedAt,finishedAt: game.finishedAt,winner: game.winner,
     discussionDurationSeconds: game.discussionDurationSeconds,voteDurationSeconds: game.voteDurationSeconds,nightDurationSeconds: game.nightDurationSeconds,
     participants: game.participants.map((p) => ({ id: p.id,userId: p.userId,username: p.usernameSnapshot,role: role(p.roleCode),status: p.status,eliminatedAt: p.eliminatedAt })),
-    phases: game.phases.map((p) => ({ id: p.id,type: p.type,cycle: p.cycle,startedAt: p.startedAt,deadline: p.deadline,resolvedAt: p.resolvedAt })) };
+    phases: game.phases.map((p) => ({ id: p.id,type: p.type,cycle: p.cycle,startedAt: p.startedAt,deadline: p.deadline,resolvedAt: p.resolvedAt,eliminatedParticipantId:p.eliminatedParticipantId })),
+    choices:game.phases.flatMap(p=>[...p.nightActions.map(a=>({id:a.id,phaseId:p.id,userId:game.participants.find(m=>m.id===a.actorId)!.userId,kind:a.kind,targetUserId:a.targetId?game.participants.find(m=>m.id===a.targetId)!.userId:null,inspectionRole:a.inspectedRoleCode?role(a.inspectedRoleCode):null,createdAt:a.createdAt})),...p.votes.map(v=>({id:v.id,phaseId:p.id,userId:game.participants.find(m=>m.id===v.actorId)!.userId,kind:'VILLAGE_VOTE' as const,targetUserId:v.targetId?game.participants.find(m=>m.id===v.targetId)!.userId:null,inspectionRole:null,createdAt:v.createdAt}))]) };
 }
 export function prismaGames(prisma: PrismaClient): GameRepository {
   return {
-    find: async (id) => { const game=await prisma.game.findUnique({ where: { id },include });return game ? map(game) : null; },
+    find: async (id) => { const game=await prisma.game.findUnique({ where: { id },include });return game ? mapGame(game) : null; },
     start: async (lobbyId,prepare) => {
       try {
         return await prisma.$transaction(async (tx) => {
@@ -33,7 +35,7 @@ export function prismaGames(prisma: PrismaClient): GameRepository {
             phases: { create: { type: 'NIGHT',cycle: 1,startedAt: setup.startedAt,deadline: setup.deadline } },
           },include });
           await tx.lobby.update({ where: { id: lobbyId },data: { status: 'IN_GAME' } });
-          return map(game);
+          return mapGame(game);
         }, { isolationLevel: 'ReadCommitted',timeout: 10000 });
       } catch (error) {
         if (typeof error==='object' && error!==null && 'code' in error && error.code==='P2002') throw new GameError('GAME_ALREADY_STARTED');
