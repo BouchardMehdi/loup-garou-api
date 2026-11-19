@@ -41,14 +41,14 @@ La cible est le VPS de l'école, confirmé par le propriétaire. Le port hôte e
 - `src/http/` : contrat OpenAPI initial.
 - `src/infrastructure/` : connexions PostgreSQL/Redis, actuellement utilisées pour la readiness.
 - `src/realtime/` : serveur Socket.IO ; connexions refusées tant que l'authentification n'est pas implémentée.
-- `src/modules/` : comptes, salons, moteur de jeu, chat et statistiques, encore non implémentés.
-- `prisma/` : comptes, salons, catalogue de rôles, parties, participants et phases initiales avec trois migrations ; repositories Prisma des comptes, salons et lancement.
+- `src/modules/` : comptes, salons et moteur de jeu implémentés ; chat et statistiques à venir.
+- `prisma/` : comptes, salons, catalogue de rôles, parties, participants et phases, actions et votes avec quatre migrations ; repositories Prisma des comptes, salons, lancement et moteur.
 
 ## Étapes suivantes
 
 Documents de conception : [spécifications](specifications.md), [MCD](data-model.md), [contrats préliminaires](interfaces.md) et [suivi des exigences](requirements.md).
 
-Les comptes sont livrés avec sessions Redis, Argon2id, protection CSRF et limitation des requêtes : voir le [contrat pour le front](authentication.md). Le front est réalisé séparément par le collègue ; aucune application front n’est ajoutée ici. Les salons et participations sont disponibles selon [leur contrat](lobbies.md). Les règles et canaux du jeu restent à développer, et Socket.IO reste fermé aux connexions applicatives.
+Les comptes sont livrés avec sessions Redis, Argon2id, protection CSRF et limitation des requêtes : voir le [contrat pour le front](authentication.md). Le front est réalisé séparément par le collègue ; aucune application front n’est ajoutée ici. Les salons et participations sont disponibles selon [leur contrat](lobbies.md). Le moteur de jeu est implémenté ; les chats restent à développer et Socket.IO reste fermé aux connexions applicatives.
 
 L'instrumentation OpenTelemetry/Jaeger, l'adaptateur Redis Socket.IO et le déploiement de plusieurs instances restent à implémenter. La configuration actuelle lance une seule instance : Nginx agit comme reverse proxy, sans répartition effective entre plusieurs serveurs. Le load balancing demandé dans le cours nécessitera une étape dédiée.
 
@@ -70,7 +70,7 @@ La construction et le démarrage Docker n'ont pas pu être vérifiés sur la mac
 
 Les modules métier contiendront des règles et cas d'usage indépendants d'Express, Socket.IO et Prisma. Les adaptateurs HTTP et temps réel appelleront ces cas d'usage avec une identité déjà vérifiée, et les repositories implémenteront les ports de persistance. Le domaine des futurs modules de jeu décidera de l’action permise et de la projection destinée à chaque joueur ; les transports ne recalculent pas les règles.
 
-Les chronomètres serveur déclencheront les mêmes cas d'usage de résolution que la fin anticipée. État de phase et décisions seront persistés pour une résolution unique et une reprise après incident. Le module comptes sépare déjà ports et service des adaptateurs Express/Prisma ; la reprise des phases reste une cible à implémenter.
+Les chronomètres serveur déclencheront les mêmes cas d'usage de résolution que la fin anticipée. État de phase et décisions seront persistés pour une résolution unique et une reprise après incident. Le module comptes sépare déjà ports et service des adaptateurs Express/Prisma ; le moteur de jeu sépare également domaine, transport et repository et reprend maintenant les échéances persistées.
 
 ## Vérification du lot comptes — 19 novembre 2026
 
@@ -90,13 +90,13 @@ Aucune vérification de production distante ni résultat de CI GitHub n'est déd
 
 Les images Docker ont été construites, le parcours HTTP comptes + salons a réussi et les deux migrations sont réexécutables sans modification quand déjà appliquées. Les vérifications utilisent un projet éphémère séparé ; ses conteneurs et volumes ont été supprimés après succès. Aucune modification du front ni déploiement distant n'est inclus dans ce lot.
 
-Le lancement d’une partie verrouille maintenant la même ligne Lobby que les adhésions. Sans cette règle commune, une inscription pourrait encore se produire pendant une attribution des rôles. Le contrat de lancement est décrit dans [game-start.md](game-start.md). Les actions de jeu et résolutions des phases restent à implémenter.
+Le lancement d’une partie verrouille maintenant la même ligne Lobby que les adhésions. Sans cette règle commune, une inscription pourrait encore se produire pendant une attribution des rôles. Le contrat de lancement est décrit dans [game-start.md](game-start.md). Les actions et résolutions sont désormais implémentées selon [game-engine.md](game-engine.md).
 
 ## Frontière du lot lancement
 
 Le domaine GameService décide qui peut lancer, construit le paquet et le mélange, puis prépare la projection autorisée. Le repository Prisma exécute la décision sous verrou parent et persiste le snapshot dans une transaction. La route POST retourne exclusivement la projection collective ; le rôle est lu séparément par la route personnelle.
 
-Le catalogue Role est initialisé par migration, les participants figent leur pseudonyme et leur rôle, et GamePhase conserve la nuit initiale. Aucun worker de résolution n’est présent ; les futures transitions devront fermer la phase courante avant d’en créer une autre dans la même transaction, en respectant l’index partiel d’unicité.
+Le catalogue Role est initialisé par migration, les participants figent leur pseudonyme et leur rôle, et GamePhase conserve la nuit initiale. Le worker de résolution ferme la phase courante avant de créer la suivante dans la même transaction, en respectant l’index partiel d’unicité.
 
 ## Vérification du lancement — 19 novembre 2026
 
@@ -105,3 +105,7 @@ Le catalogue Role est initialisé par migration, les participants figent leur ps
 Une première exécution a révélé que le test de sessions comptait aussi des compteurs de limitation ajoutés dans le même espace Redis. Les suites utilisent maintenant des préfixes distincts pour sessions et limites, sans changement du préfixe de production ; la suite complète a ensuite réussi. Les volumes et conteneurs de test ont été supprimés après vérification.
 
 Le pilote pg 8 émet un avertissement de dépréciation sur certaines requêtes internes pendant les tests de concurrence Prisma ; il ne fait pas échouer les vérifications. Les versions restent verrouillées et la compatibilité devra être revérifiée lors d'une évolution majeure du pilote.
+
+## Moteur de jeu livré
+
+GameEngine calcule les choix autorisés et résolutions sans dépendre d’Express ni de Prisma. prismaEngine verrouille Game avec SELECT FOR UPDATE avant lecture et enregistre choix, phase, élimination et victoire atomiquement. Le worker démarre avec l’API, traite les échéances persistées par lots de 50 et attend son traitement courant à l’arrêt. Les validations tardives peuvent déclencher la résolution échue, qui reste committée même quand le choix tardif est refusé. Les snapshots privés ne sont ni sérialisés directement ni journalisés. Aucun événement Socket.IO n’est encore émis. Voir [le contrat du moteur](game-engine.md).

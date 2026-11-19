@@ -1,3 +1,6 @@
+import {GameEngine} from './modules/game/engine.js';
+import {prismaEngine} from './modules/game/engine-repository.js';
+import {startGameScheduler} from './modules/game/scheduler.js';
 import { createServer } from 'node:http';
 import pino from 'pino';
 import { RedisStore } from 'connect-redis';
@@ -24,7 +27,10 @@ deps.pool.on('error', () => { logger.error('PostgreSQL pool error'); });
 await deps.redis.connect();
 const prisma = new PrismaClient({ adapter: new PrismaPg(deps.pool) });
 const service = await AccountService.create(prismaUsers(prisma), argonPasswords);
+const engine=new GameEngine(prismaEngine(prisma));
+const scheduler=startGameScheduler(engine,config.GAME_TICK_INTERVAL_MS,()=>{logger.error('Game phase processing failed');});
 const app = createApp({ origin: config.APP_ORIGIN, trustProxyHops: config.TRUST_PROXY_HOPS,
+  engine,
   games: new GameService(prismaGames(prisma)),
   lobbies: new LobbyService(prismaLobbies(prisma)),
   nodeEnv: config.NODE_ENV, checks: deps.checks, onError: () => { logger.error('Unhandled HTTP error'); },
@@ -52,7 +58,7 @@ function shutdown() {
   const timer = setTimeout(() => { process.exit(1); }, 10_000);
   timer.unref();
   io.close(() => {
-    void prisma.$disconnect().then(() => Promise.allSettled([deps.pool.end(), deps.redis.close()])).then(() => {
+    void scheduler.stop().then(()=>prisma.$disconnect()).then(() => Promise.allSettled([deps.pool.end(), deps.redis.close()])).then(() => {
       clearTimeout(timer);
       process.exit(0);
     });

@@ -1,5 +1,6 @@
 // Isolated test Compose project only. Synthetic accounts are seeded to respect registration rate limits.
 import assert from 'node:assert/strict';
+import {setTimeout} from 'node:timers';
 import {randomUUID} from 'node:crypto';
 import argon2 from 'argon2';
 import {PrismaPg} from '@prisma/adapter-pg';
@@ -31,15 +32,35 @@ try{
   assert.equal(started.data.participants.some(p=>'role'in p || 'roleCode'in p || 'team'in p),false);
   const roles=[];
   for(const c of clients){const personal=await c.call(`/api/games/${started.data.id}/participants/me`);assert.equal(personal.status,200);roles.push(personal.data.role);}
-  assert.deepEqual(roles.sort(),['SEER','VILLAGER','VILLAGER','VILLAGER','VILLAGER','WEREWOLF']);
+  assert.deepEqual([...roles].sort(),['SEER','VILLAGER','VILLAGER','VILLAGER','VILLAGER','WEREWOLF']);
   assert.equal((await clients[0].call(`/api/lobbies/${lobbyId}/games`,{method:'POST',body:{}})).status,409);
   assert.equal((await clients[0].call(`/api/lobbies/${lobbyId}`)).data.gameId,started.data.id);
   assert.equal((await clients[1].call(`/api/lobbies/${lobbyId}/memberships/me`,{method:'DELETE'})).status,409);
   assert.equal(await prisma.game.count({where:{lobbyId}}),1);
+  const gameId=started.data.id;const wolf=roles.indexOf('WEREWOLF');const seer=roles.indexOf('SEER');const victim=roles.indexOf('VILLAGER');
+  const night=`/api/games/${gameId}/phases/${started.data.phase.id}/night-actions`;
+  assert.equal((await clients[wolf].call(night,{method:'POST',body:{targetUserId:users[victim]}})).status,201);
+  const inspection=await clients[seer].call(night,{method:'POST',body:{targetUserId:users[wolf]}});
+  assert.equal(inspection.status,201);assert.equal(inspection.data.inspection.role,'WEREWOLF');
+  let state=(await clients[0].call(`/api/games/${gameId}`)).data;
+  assert.equal(state.phase.type,'DAY_DISCUSSION');assert.equal(state.participants.find(p=>p.userId===users[victim]).status,'DEAD');
+  assert.equal(state.participants.some(p=>'role'in p),false);
+  // Only this isolated smoke fixture: shorten debate to exercise the actual server scheduler.
+  await prisma.gamePhase.update({where:{id:state.phase.id},data:{startedAt:new Date(Date.now()-2000),deadline:new Date(Date.now()-1000)}});
+  for(let i=0;i<50&&state.phase.type!=='DAY_VOTE';i++){
+    await new Promise(resolve=>setTimeout(resolve,200));state=(await clients[0].call(`/api/games/${gameId}`)).data;
+  }
+  assert.equal(state.phase.type,'DAY_VOTE');const vote=`/api/games/${gameId}/phases/${state.phase.id}/votes`;
+  for(let i=0;i<clients.length;i++)if(i!==victim)assert.equal((await clients[i].call(vote,{method:'POST',body:{targetUserId:i===wolf?null:users[wolf]}})).status,201);
+  state=(await clients[0].call(`/api/games/${gameId}`)).data;
+  assert.equal(state.status,'FINISHED');assert.equal(state.winner,'VILLAGE');assert.equal(state.phase,null);
+  assert.equal(state.participants.every(p=>'role'in p&&'team'in p),true);
+  assert.equal((await clients[0].call(`/api/lobbies/${lobbyId}`)).data.status,'FINISHED');
+  assert.equal((await clients[seer].call(vote,{method:'POST',body:{targetUserId:null}})).status,409);
   for(const c of clients)assert.equal((await c.call('/api/sessions/current',{method:'DELETE'})).status,204);
-  console.log('Game-start smoke test passed: six authenticated players, frozen lobby, secret roles and unique launch.');
+  console.log('Game-engine smoke test passed: six sessions, secret roles, inspection, elimination, scheduler, votes and village victory.');
 }finally{
-  if(lobbyId){const game=await prisma.game.findUnique({where:{lobbyId}});if(game){await prisma.gamePhase.deleteMany({where:{gameId:game.id}});await prisma.gameParticipant.deleteMany({where:{gameId:game.id}});await prisma.game.delete({where:{id:game.id}});}
+  if(lobbyId){const game=await prisma.game.findUnique({where:{lobbyId}});if(game){await prisma.nightAction.deleteMany({where:{gameId:game.id}});await prisma.villageVote.deleteMany({where:{gameId:game.id}});await prisma.gamePhase.deleteMany({where:{gameId:game.id}});await prisma.gameParticipant.deleteMany({where:{gameId:game.id}});await prisma.game.delete({where:{id:game.id}});}
     await prisma.lobbyMembership.deleteMany({where:{lobbyId}});await prisma.lobby.delete({where:{id:lobbyId}});}
   await prisma.user.deleteMany({where:{id:{in:users}}});await prisma.$disconnect();
 }

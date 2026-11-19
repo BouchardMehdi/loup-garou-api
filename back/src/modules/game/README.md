@@ -1,10 +1,13 @@
-# Module jeu — lancement
+# Module jeu
 
-- `domain.ts` : partie, participant, phase et port de persistance sans framework.
-- `service.ts` : composition, mélange cryptographique des rôles, autorisations et projections publique/personnelle explicites.
-- `infrastructure.ts` : création atomique sous le même verrou parent Lobby que les participations de salon.
+- `domain.ts` : partie, participant, phase et choix, sans framework.
+- `service.ts` : composition, rôles cryptographiques, autorisations et projections explicites.
+- `engine.ts` : choix nocturnes, votes, transitions, éliminations et victoire ; horloge injectable.
+- `infrastructure.ts` : lancement atomique sous verrou parent Lobby et lecture Prisma.
+- `engine-repository.ts` : actions et résolutions transactionnelles sous verrou Game.
+- `scheduler.ts` : échéances persistées, reprise au démarrage et arrêt sans chevauchement.
 - `http.ts` / `openapi.ts` : routes protégées et contrat Swagger.
 
-Le lancement fige pseudonymes, rôles et durées ; aucun rôle n'est envoyé dans la réponse de lancement ou l'état collectif. Le catalogue des trois rôles est initialisé par migration. Les entités contenant roleCode ne doivent jamais être sérialisées directement ni journalisées.
+Les snapshots Prisma contiennent des secrets ; ne jamais les sérialiser directement ou les journaliser. Seuls les participants lisent leur partie ; rôles collectifs révélés uniquement après FINISHED. L’inspection reste privée à la voyante.
 
-La première nuit et son échéance sont persistées. Aucun ordonnanceur, action nocturne, vote, élimination, victoire ou chat n'est implémenté par ce lot. Voir [le contrat](../../../../docs/game-start.md).
+Contrats : [lancement](../../../../docs/game-start.md), [moteur](../../../../docs/game-engine.md). Chat et notifications Socket.IO restent à développer.

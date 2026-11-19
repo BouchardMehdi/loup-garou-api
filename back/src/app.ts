@@ -1,3 +1,4 @@
+import {EngineError,type GameEngine} from './modules/game/engine.js';
 import express, { type ErrorRequestHandler } from 'express';
 import helmet from 'helmet';
 import cors from 'cors';
@@ -16,7 +17,7 @@ import { openApiDocument } from './http/openapi.js';
 
 export function createApp(options: {
   origin: string; trustProxyHops: number; checks: DependencyChecks;
-  games?: GameService; lobbies?: LobbyService; accounts?: AccountHttpOptions; nodeEnv?: string; onError?: () => void;
+  engine?:GameEngine; games?: GameService; lobbies?: LobbyService; accounts?: AccountHttpOptions; nodeEnv?: string; onError?: () => void;
 }) {
   const app = express();
   app.disable('x-powered-by');
@@ -45,10 +46,15 @@ export function createApp(options: {
   if (options.accounts) {
     app.use('/api', accountRouter(options.accounts));
     if (options.lobbies) app.use('/api', lobbyRouter({ service: options.lobbies, accounts: options.accounts.service, limiter: options.accounts.limiter }));
-    if (options.games) app.use('/api', gameRouter({ service: options.games, accounts: options.accounts.service, limiter: options.accounts.limiter }));
+    if (options.games) app.use('/api', gameRouter({ engine:options.engine, service: options.games, accounts: options.accounts.service, limiter: options.accounts.limiter }));
   }
   app.use((_req, res) => { res.status(404).json({ error: 'Not found' }); });
   const errorHandler: ErrorRequestHandler = (error: unknown, _req, res, _next) => {
+    if(error instanceof EngineError){
+      const status=['GAME_NOT_FOUND','CHOICE_NOT_FOUND','TARGET_NOT_FOUND'].includes(error.code)?404:['PLAYER_DEAD','ROLE_FORBIDDEN'].includes(error.code)?403:error.code==='TARGET_FORBIDDEN'?400:409;
+      const messages={GAME_NOT_FOUND:'Game not found',CHOICE_NOT_FOUND:'Choice not found',TARGET_NOT_FOUND:'Target not found',GAME_FINISHED:'Game is finished',PHASE_CLOSED:'Phase is closed',WRONG_PHASE:'Action is not allowed in this phase',PLAYER_DEAD:'Eliminated players cannot act',ROLE_FORBIDDEN:'Role cannot perform this action',TARGET_FORBIDDEN:'Invalid target',CHOICE_ALREADY_SUBMITTED:'Choice already submitted'};
+      res.status(status).json({code:error.code,error:messages[error.code]});return;
+    }
     if (error instanceof GameError) {
       const status=error.code==='GAME_NOT_FOUND' || error.code==='LOBBY_NOT_FOUND' ? 404 : error.code==='START_FORBIDDEN' ? 403 : 409;
       const messages={ GAME_NOT_FOUND: 'Game not found',LOBBY_NOT_FOUND: 'Lobby not found',START_FORBIDDEN: 'Only the lobby owner can start',

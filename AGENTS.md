@@ -14,7 +14,7 @@ Ce document s'adresse à Codex et à Claude Code. Le projet est réalisé en bin
 ## État et périmètre
 
 - Nom provisoire : Loup-Garou API. Dépôt GitHub : `BouchardMehdi/loup-garou-api`.
-- Le socle et les comptes sont implémentés : inscription, sessions Redis, déconnexion et profil privé. Salons et participations sont également implémentés ; lancement et rôles initiaux sont disponibles ; actions, résolution des phases, chats et statistiques restent à développer ; Socket.IO est encore fermé aux connexions applicatives.
+- Le socle et les comptes sont implémentés : inscription, sessions Redis, déconnexion et profil privé. Salons et participations sont également implémentés ; lancement et rôles initiaux sont disponibles ; actions, résolution des phases et victoire sont disponibles ; chats, historique paginé et statistiques restent à développer ; Socket.IO est encore fermé aux connexions applicatives.
 - La stack ci-dessous est validée. Consulter back/package.json, le README et deploy.md pour les versions, commandes et procédures disponibles.
 - Ne pas démarrer une nouvelle étape de développement sur la seule base de ce document : respecter la demande en cours.
 - Communiquer et écrire la documentation en français. Utiliser l'anglais pour les identifiants de code et des noms cohérents dans l'API.
@@ -33,7 +33,7 @@ Ce document s'adresse à Codex et à Claude Code. Le projet est réalisé en bin
 ## Règles de la première version
 
 - Source de vérité fonctionnelle : `docs/specifications.md` ; MCD : `docs/data-model.md` ; interfaces futures : `docs/interfaces.md` ; conformité : `docs/requirements.md`.
-- Ces documents décrivent le jeu cible. Les lots comptes, salons et lancement sont disponibles ; consulter `docs/authentication.md`, `docs/lobbies.md` et `docs/game-start.md` pour les contrats implémentés et exemples pour le front.
+- Ces documents décrivent le jeu cible. Les lots comptes, salons, lancement et moteur sont disponibles ; consulter `docs/authentication.md`, `docs/lobbies.md`, `docs/game-start.md` et `docs/game-engine.md` pour les contrats implémentés et exemples pour le front.
 - 6 à 12 joueurs ; une voyante, un loup pour 6–7 joueurs, deux pour 8–10 et trois pour 11–12, autres joueurs villageois.
 - Victoire du village sans loup vivant ; victoire des loups à parité ou majorité des vivants. Les morts partagent le résultat de leur camp.
 - Départ de nuit, puis débat et vote. Durées entières réglables de 30 à 300 secondes ; valeurs initiales débat/vote/nuit : 180/60/60.
@@ -114,7 +114,7 @@ Les accès sont indépendants de la phase jour/nuit. Le chat public est commun a
 
 - Notre périmètre de travail est le back-end. Le front Vue ajouté par le collègue est présent dans `front/` ; préserver son code et ne pas le modifier sans demande explicite. Documenter les contrats API nécessaires à son intégration.
 - Depuis `back/` : `npm ci`, `npm run typecheck`, `npm run lint`, `npm test`, `npm run build`, `npm run prisma:validate`.
-- Prisma contient User, Lobby et LobbyMembership avec leurs migrations. Génération avant typecheck/build, adaptateur PostgreSQL et repository utilisés pour les comptes ; le client généré reste ignoré par Git. Role, Game, GameParticipant et GamePhase sont désormais présents ; actions, votes et messages restent à ajouter.
+- Prisma contient User, Lobby et LobbyMembership avec leurs migrations. Génération avant typecheck/build, adaptateur PostgreSQL et repository utilisés pour les comptes ; le client généré reste ignoré par Git. Role, Game, GameParticipant et GamePhase sont désormais présents ; NightAction et VillageVote sont ajoutés par la quatrième migration ; messages à venir.
 - Infrastructure : VPS Linux de l’école, confirmé par l’utilisateur ; Nginx et Certbot sur l’hôte ; API, PostgreSQL et Redis dans Docker Compose. DNS des sous-domaines chez Hostinger ; site principal conservé chez Hostinger.
 - Le dépôt GitHub est public, selon confirmation de l’utilisateur le 19 novembre 2026. Ne pas traiter cette visibilité comme une autorisation de publier des secrets ; GHCR possède ses propres droits d’accès.
 - Conserver à la racine `docker-compose.yml`, `.env.example`, `README.md` et `deploy.md`, à actualiser avec chaque nouvelle variable ou étape d'exploitation.
@@ -124,7 +124,7 @@ Les accès sont indépendants de la phase jour/nuit. Le chat public est commun a
 - Nginx transmet `/api/` et `/socket.io/`, avec upgrade WebSocket et en-têtes du proxy. Préserver les modifications TLS de Certbot.
 - Conserver les volumes PostgreSQL/Redis. Pour les mises à jour habituelles : `git pull --ff-only` puis `docker compose up -d --build`, sans `docker compose down` ni suppression de volumes.
 - Prévoir sauvegarde et migration contrôlée lors des futures évolutions de schéma. Les secrets restent hors Git.
-- Le socle n’est pas encore jouable de bout en bout : comptes, salons et lancement sont disponibles ; actions, résolution des phases, victoire et chats restent à développer. OpenTelemetry/Jaeger, plusieurs instances et déploiement sans interruption restent à intégrer.
+- Une partie complète est jouable via HTTP : comptes, salons, lancement, actions, résolution et victoire sont disponibles ; chats à développer. OpenTelemetry/Jaeger, plusieurs instances et déploiement sans interruption restent à intégrer.
 - Aucun déploiement distant autorisé par ces seules consignes : suivre la demande de l'utilisateur.
 
 ## Contrat des comptes et coordination du front
@@ -158,19 +158,29 @@ Les accès sont indépendants de la phase jour/nuit. Le chat public est commun a
 - Création sous le même verrou parent Lobby que join/leave : snapshot des membres, pseudonymes et durées, attribution cryptographique, partie, participants, première nuit et statut IN_GAME enregistrés dans une seule transaction.
 - Unicité de Game par Lobby, de GameParticipant par utilisateur/partie et index partiel d’une seule phase non résolue. Conserver les index SQL partiels lors des migrations futures.
 - Le catalogue Role contient VILLAGER/SEER (VILLAGE) et WEREWOLF (WEREWOLVES), initialisés par migration. Aucun rôle de partie stocké sur User ni en session Redis.
-- La réponse de lancement et la projection collective excluent tous les rôles et camps individuels. Ces lectures sont réservées aux participants, même si le salon était public.
+- La réponse de lancement et la projection collective avant FINISHED excluent tous les rôles et camps individuels. Après FINISHED, la projection collective révèle ces rôles aux participants uniquement. Ces lectures sont réservées aux participants, même si le salon était public.
 - La route personnelle retourne uniquement son rôle ; coéquipiers loups vivants uniquement à un loup vivant. Jamais de route permettant de consulter arbitrairement le rôle d’un autre utilisateur.
 - Le salon expose gameId et un lien game pour retrouver la partie après lancement. Les arrivées, départs et doubles lancements sont alors refusés.
-- La première NIGHT et son échéance sont persistées, mais aucun ordonnanceur ni action/transition de phase n’est encore implémenté. Une échéance dépassée ne résout pas la nuit dans ce lot.
+- La première NIGHT et son échéance sont persistées. Le moteur résout maintenant les phases au dernier choix attendu ou à échéance ; la reprise serveur conserve rôles, choix et durées. Voir docs/game-engine.md.
 - Ne pas sérialiser ou journaliser les objets ORM de partie : ils contiennent des rôles secrets. Utiliser les projections publique/personnelle explicites.
 - Tests Redis : chaque suite utilise des espaces distincts pour sessions et compteurs ; le préfixe partagé de production reste inchangé.
+
+## Contrat du moteur de jeu
+
+- Source : `docs/game-engine.md`. POST night-actions/votes sous `/api/games/{gameId}/phases/{phaseId}`, GET de son choix sous `/me` ; corps strict `{targetUserId: UUID|null}`, choix définitif. Ne pas envoyer rôle, kind ou horloge.
+- GameEngine reste indépendant des frameworks ; prismaEngine verrouille Game avant toute soumission/résolution et conserve l’unicité des choix et de la phase ouverte. Clés étrangères composites : phase, acteur et cible de la même partie.
+- NIGHT attend les loups et la voyante vivants ; DAY_VOTE attend tous les vivants ; abstention explicite compte comme choix soumis. DAY_DISCUSSION ne se termine pas tôt. Égalité ou absence de voix : aucune victime.
+- Worker inclus dans l’API, contrôle toutes les GAME_TICK_INTERVAL_MS (1000 par défaut, 250–60000), lots de 50. Reprise des échéances persistées au démarrage ; nouvelle phase à la résolution effective avec sa durée entière. Aucune route de résolution manuelle.
+- À partir de l’échéance, refuser le choix ; une résolution échue reste committée même si le choix tardif est refusé. Vérifier après acquisition du verrou.
+- Projection collective : phase, états vivants/morts, lastResolution et victoire ; pas de choix ni inspection. Route personnelle : currentChoice et inspections de la voyante, conservées après élimination. Rôles collectifs révélés aux participants après FINISHED seulement.
+- Victoire : partie FINISHED et salon FINISHED atomiquement, aucune phase ouverte, mutations refusées. HTTP peut être interrogé périodiquement ; Socket.IO est encore fermé. Ne pas présenter les chats/statistiques comme disponibles.
 
 ## Décisions encore ouvertes
 
 - Pouvoirs, camps, interactions et droits des futurs rôles exclusifs ; sélection des rôles par salon au-delà de la composition V1.
 - Politique de conservation et de suppression de compte avant utilisation de données réelles.
-- Schémas détaillés des entrées de jeu et messages Socket.IO : à figer dans les prochains lots. Le contrat des comptes et le cycle des sessions sont documentés dans `docs/authentication.md`.
-- Traduction des entités de partie du MCD en schéma Prisma, transactions et migrations compatibles ; User, Lobby, LobbyMembership, Role, Game, GameParticipant et GamePhase sont déjà implémentés.
+- Schémas des messages Socket.IO : à figer dans le lot chat ; entrées HTTP du moteur documentées dans docs/game-engine.md. Le contrat des comptes et le cycle des sessions sont documentés dans `docs/authentication.md`.
+- Traduction des entités de partie du MCD en schéma Prisma, transactions et migrations compatibles ; User, Lobby, LobbyMembership, Role, Game, GameParticipant, GamePhase, NightAction et VillageVote sont déjà implémentés.
 - Revanche dans le même salon, spectateurs, modération et abandon explicite : hors V1, ne pas les ajouter implicitement.
 
 Ne pas présenter ces points comme déjà décidés. Demander une précision lorsqu'une décision conditionne le comportement à implémenter ; poursuivre les travaux indépendants utiles.
@@ -222,4 +232,9 @@ MODÈLE DE NOTE À COPIER DANS LES DEUX FICHIERS
 AAAA-MM-JJ | PROPOSÉ / VALIDÉ / IMPLÉMENTÉ / ABANDONNÉ | Sujet
 Contexte, décision ou proposition, impact, référence éventuelle à une issue ou une PR.
 Une fois une décision validée, mettre aussi à jour la section concernée ci-dessus.
+-->
+
+<!--
+2026-11-19 | IMPLÉMENTÉ | Moteur de jeu HTTP
+Actions nocturnes privées, inspection, débat et vote, abstentions, égalités, éliminations, deux victoires et reprise des échéances persistées ajoutés. Transactions sous verrou Game, contraintes composites et quatrième migration. Front préservé ; contrat docs/game-engine.md. Chat et notifications Socket.IO restent pour le prochain lot.
 -->

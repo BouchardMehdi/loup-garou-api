@@ -50,7 +50,7 @@ jobs:
         working-directory: .
         run: |
           docker compose exec -T api node --input-type=module < back/tests/smoke/auth.mjs
-      - name: Game start smoke test
+      - name: Complete game smoke test
         working-directory: .
         run: docker compose exec -T api node --input-type=module < back/tests/smoke/game-start.mjs
       - name: Integration tests inside Docker

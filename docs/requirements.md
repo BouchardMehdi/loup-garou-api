@@ -12,11 +12,11 @@ Légende : **présent** = fichier ou socle disponible ; **conçu** = documenté 
 | C4 System Context | Conçu dans [architecture.md](architecture.md) | Acteurs, frontière système et interactions expliqués |
 | MCD | Conçu dans [data-model.md](data-model.md) | Cardinalités et correspondance avec le schéma livré |
 | Au moins quatre endpoints REST orientés ressources | Comptes et salons implémentés : création/lecture de salons et participations ; santé/documentation ne sont pas comptées comme métier | Routes métier fonctionnelles, méthodes, headers et statuts corrects |
-| Hiérarchie de ressources et HAL ou JSON-LD/Hydra | HAL présent sur comptes, salons et participations ; domaine du jeu à venir | `_links`, `_embedded`, navigabilité et projections protégées |
+| Hiérarchie de ressources et HAL ou JSON-LD/Hydra | HAL présent sur comptes, salons, parties et choix personnels | `_links`, `_embedded`, navigabilité et projections protégées |
 | Collection paginée | Salons publics paginés implémentés ; historique, messages et statistiques à venir | Pages et liens testés, bornes et ordre stable |
 | WebSocket/SSE ou RPC | Transport Socket.IO présent mais connexions applicatives refusées | Chat et événements authentifiés fonctionnels |
-| Authentification et autorisations | Comptes, salons et droits de lancement/lecture des parties implémentés ; actions et chats à développer | Tests de confidentialité, sessions et accès inter-parties |
-| ORM et migrations | Comptes, salons, rôles, parties, participants et phases initiales avec trois migrations ; repositories Prisma implémentés | Client utilisé dans les repositories, migrations versionnées et appliquées |
+| Authentification et autorisations | Comptes, salons et droits de lancement/lecture des parties implémentés ; actions autorisées selon rôle/phase ; chats à développer | Tests de confidentialité, sessions et accès inter-parties |
+| ORM et migrations | Comptes, salons, rôles, parties, participants et phases, actions et votes avec quatre migrations ; repositories Prisma implémentés | Client utilisé dans les repositories, migrations versionnées et appliquées |
 | Cache des réponses d'API avec Redis | Redis provisionné ; politique de statistiques conçue | Réponse servie depuis le cache, expiration et invalidation démontrées |
 | OpenAPI interactive sur `/doc` en développement | `/doc` en développement, `/api/docs/` et contrat des comptes présents | Route demandée accessible en dev et contrat à jour |
 | Déploiement sur VPS de l'école et données de test | Guide présent ; cible confirmée ; déploiement à vérifier | Service accessible et partie démontrable avec données de test sans données personnelles réelles |
@@ -28,9 +28,9 @@ Légende : **présent** = fichier ou socle disponible ; **conçu** = documenté 
 | Monitoring performances/fiabilité et erreurs centralisées | Logs JSON et gestionnaire HTTP présents ; monitoring/centralisation à développer | Traces/métriques, accès aux erreurs et diagnostic d'un incident |
 | Rate-limiting API | Limites des routes applicatives, CSRF, inscriptions et connexions implémentées dans Redis ; chat à venir | Dépassement contrôlé avec réponse 429 ; protection aussi du chat |
 | Montée en charge cohérente avec le métier | Script santé présent ; scénario métier à développer | Rapport avec hypothèses, ressources VPS, charge, latence, erreurs et limites |
-| Redémarrage après crash ou reboot et healthchecks | Démarrage local et healthchecks validés pour les comptes ; crash/reboot et reprise du jeu à vérifier | Test de crash/reboot, conservation des données et reprise des phases |
-| Domaine indépendant du framework, code maintenable | Comptes : service et ports indépendants d’Express et Prisma ; domaine du jeu à venir | Tests métier sans Express, Socket.IO ou Prisma |
-| Application fonctionnelle prioritaire sur la complétude | Pas encore jouable ; V1 délimitée | Démonstration de bout en bout avec les trois rôles |
+| Redémarrage après crash ou reboot et healthchecks | Démarrage local, healthchecks et reprise des échéances persistées testés ; crash/reboot VPS à vérifier | Test de crash/reboot, conservation des données et reprise des phases |
+| Domaine indépendant du framework, code maintenable | Comptes, salons et moteur : services et ports indépendants d’Express et Prisma | Tests métier sans Express, Socket.IO ou Prisma |
+| Application fonctionnelle prioritaire sur la complétude | Partie complète jouable via HTTP ; front à intégrer et chats à développer | Démonstration de bout en bout avec les trois rôles |
 | Stack éprouvée Node.js/PHP et composants maintenus | Express/Node.js/TypeScript installés ; versions verrouillées | Choix et risques expliqués, audits suivis |
 | Load balancer et OpenTelemetry avec visualisation, annoncés dans le cours initial | Nginx proxy seul ; plusieurs instances et instrumentation à développer | Démonstration de répartition et observabilité selon attentes de l'enseignant |
 
@@ -49,7 +49,7 @@ Vérifier sous charge les autorisations, l'absence de vote/fin de phase en doubl
 ## Ordre de mise en œuvre après cette branche
 
 1. Comptes/sessions et protections communes implémentés ; vérifier et maintenir le parcours complet sur chaque livraison.
-2. Salons, inscriptions et lancement livrés ; développer ensuite actions, résolution et victoire dans le moteur de jeu.
+2. Salons, lancement et moteur de jeu livrés ; maintenir confidentialité, concurrence et reprise des échéances.
 3. Chats autorisés, historique, statistiques et cache.
 4. Compléter qualité, sécurité, observabilité, livraison et preuves de déploiement/charge tout au long de ces lots.
 
@@ -65,4 +65,8 @@ Le 19 novembre 2026 : 26 tests unitaires et 9 tests d'intégration réussis, smo
 
 ## Preuves locales du lancement
 
-Le 19 novembre 2026 : 42 tests unitaires, 24 tests d'intégration et deux smoke tests HTTP Docker réussis. Rôles persistés, première nuit et échéance, refus d'accès hors partie, composition pour tous les effectifs autorisés et concurrence avec les inscriptions/départs sont vérifiés. Les actions et résolutions des phases ne sont pas encore fonctionnelles ; le résultat ne doit donc pas être présenté comme une partie jouable complète.
+Le 19 novembre 2026 : 42 tests unitaires, 24 tests d'intégration et deux smoke tests HTTP Docker réussis. Rôles persistés, première nuit et échéance, refus d'accès hors partie, composition pour tous les effectifs autorisés et concurrence avec les inscriptions/départs sont vérifiés. Ce lot initial ne livrait pas encore les actions et résolutions ; le lot moteur ci-dessous les complète.
+
+## Preuves locales du moteur
+
+Le 19 novembre 2026 : 56 tests unitaires/HTTP, 32 tests d’intégration PostgreSQL/Redis et deux smoke tests Docker réussis. Le scénario à six sessions joue jusqu’à la victoire du village et exerce l’ordonnanceur réel. Les tests vérifient aussi victoire des loups, égalités, abstentions, rôles/cibles interdits, choix privés, doublons, résolutions concurrentes et reprise depuis les échéances persistées avec horloge contrôlée. La quatrième migration est appliquée puis réexécutée sans changement sur une base éphémère. Types, ESLint, build, schéma Prisma et audit npm de production réussissent (0 vulnérabilité signalée). Aucun déploiement VPS ni connexion du front n’est réalisé ; les chats restent à développer.

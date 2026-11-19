@@ -7,12 +7,16 @@ export interface GameParticipant {
   id: string; userId: string; username: string; role: RoleCode; status: ParticipantStatus; eliminatedAt: Date | null;
 }
 export interface GamePhase {
-  id: string; type: PhaseType; cycle: number; startedAt: Date; deadline: Date; resolvedAt: Date | null;
+  id: string; type: PhaseType; cycle: number; startedAt: Date; deadline: Date; resolvedAt: Date | null; eliminatedParticipantId?: string | null;
+}
+export interface GameChoice {
+  id:string;phaseId:string;userId:string;kind:'WOLF_ATTACK'|'SEER_INSPECT'|'VILLAGE_VOTE';
+  targetUserId:string|null;inspectionRole:RoleCode|null;createdAt:Date;
 }
 export interface Game {
   id: string; lobbyId: string; status: GameStatus; startedAt: Date; finishedAt: Date | null; winner: Team | null;
   discussionDurationSeconds: number; voteDurationSeconds: number; nightDurationSeconds: number;
-  participants: GameParticipant[]; phases: GamePhase[];
+  participants: GameParticipant[]; phases: GamePhase[]; choices?:GameChoice[];
 }
 export interface StartLobby {
   id: string; ownerId: string; status: string; capacity: number;

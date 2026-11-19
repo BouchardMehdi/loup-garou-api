@@ -1,6 +1,6 @@
 # Modèle conceptuel de données — première version
 
-Statut : conception cible, implémentée pour USER, LOBBY, LOBBY_MEMBERSHIP, ROLE, GAME, GAME_PARTICIPANT et PHASE (GamePhase dans Prisma). Actions, votes et messages restent à implémenter. Le champ technique usernameKey assure l’unicité insensible à la casse et n’est pas exposé par l’API. Ce document décrit des entités, attributs métier et cardinalités ; les types SQL, index et migrations seront conçus lors de l'implémentation.
+Statut : conception cible, implémentée pour USER, LOBBY, LOBBY_MEMBERSHIP, ROLE, GAME, GAME_PARTICIPANT et PHASE (GamePhase dans Prisma), NIGHT_ACTION (NightAction) et VOTE (VillageVote). Les messages restent à implémenter. Le champ technique usernameKey assure l’unicité insensible à la casse et n’est pas exposé par l’API. Ce document décrit des entités, attributs métier et cardinalités ; les types SQL, index et migrations seront conçus lors de l'implémentation.
 
 Référence : [spécifications](specifications.md).
 
@@ -68,7 +68,7 @@ Le modèle conserve ROLE comme catalogue extensible ; l'ajout de rôles exclusif
 
 ## Limites et prochaine traduction
 
-Les contraintes entre plusieurs entités nécessiteront des services métier et transactions, en plus des clés étrangères et unicités. Les actions privées et rôles ne doivent pas être sérialisés automatiquement depuis les entités ORM.
+Les contraintes entre plusieurs entités nécessitent des services métier et transactions, en plus des clés étrangères et unicités. Les actions privées et rôles ne doivent pas être sérialisés automatiquement depuis les entités ORM.
 
 Aucune durée de conservation ni suppression de compte n'est implémentée ici. Définir ces politiques avant utilisation de données réelles, en préservant la cohérence de l'historique et les droits sur les messages.
 
@@ -78,4 +78,8 @@ Lobby contient propriétaire, visibilité, état, capacité, durées et empreint
 
 ## Traduction du lancement des parties
 
-Game possède un lien unique vers Lobby et copie les durées ; GameParticipant référence User et Role avec pseudonyme figé, rôle et état vivant/mort, unique par utilisateur/partie. Role est un catalogue initialisé par migration. GamePhase enregistre la nuit initiale et son échéance ; l'index SQL partiel interdit deux phases non résolues pour une partie. Le moteur qui résoudra ces phases n'est pas encore livré. Voir [le contrat de lancement](game-start.md).
+Game possède un lien unique vers Lobby et copie les durées ; GameParticipant référence User et Role avec pseudonyme figé, rôle et état vivant/mort, unique par utilisateur/partie. Role est un catalogue initialisé par migration. GamePhase conserve les phases, échéances, résolutions et victime éventuelle ; l'index SQL partiel interdit deux phases non résolues pour une partie. Le moteur résout ces phases sous verrou Game. Voir [le contrat de lancement](game-start.md).
+
+## Traduction Prisma du moteur livré
+
+NightAction et VillageVote sont uniques par phase/acteur. Leurs clés étrangères composites et la victime de GamePhase référencent des participants de la même partie. NightAction conserve la nature déduite du rôle et le résultat privé d’inspection ; cible null signifie abstention. La quatrième migration ajoute ces contraintes et un index des échéances non résolues. Les contrôles vivant/rôle/phase et la résolution transactionnelle sont décrits dans [game-engine.md](game-engine.md).
