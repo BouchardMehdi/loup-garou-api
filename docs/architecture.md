@@ -42,7 +42,7 @@ La cible est le VPS de l'école, confirmé par le propriétaire. Le port hôte e
 - `src/infrastructure/` : connexions PostgreSQL/Redis, actuellement utilisées pour la readiness.
 - `src/realtime/` : serveur Socket.IO ; connexions refusées tant que l'authentification n'est pas implémentée.
 - `src/modules/` : comptes, salons, moteur de jeu, chat et statistiques, encore non implémentés.
-- `prisma/` : User, Lobby, LobbyMembership et deux migrations ; repositories comptes et salons basés sur Prisma. Les entités de partie restent à ajouter.
+- `prisma/` : comptes, salons, catalogue de rôles, parties, participants et phases initiales avec trois migrations ; repositories Prisma des comptes, salons et lancement.
 
 ## Étapes suivantes
 
@@ -90,4 +90,18 @@ Aucune vérification de production distante ni résultat de CI GitHub n'est déd
 
 Les images Docker ont été construites, le parcours HTTP comptes + salons a réussi et les deux migrations sont réexécutables sans modification quand déjà appliquées. Les vérifications utilisent un projet éphémère séparé ; ses conteneurs et volumes ont été supprimés après succès. Aucune modification du front ni déploiement distant n'est inclus dans ce lot.
 
-Le futur lancement d'une partie devra verrouiller la même ligne Lobby que les adhésions. Sans cette règle commune, une inscription pourrait encore se produire pendant une attribution des rôles. La documentation fonctionnelle et le MCD décrivent déjà cette prochaine étape, mais elle n'est pas implémentée.
+Le lancement d’une partie verrouille maintenant la même ligne Lobby que les adhésions. Sans cette règle commune, une inscription pourrait encore se produire pendant une attribution des rôles. Le contrat de lancement est décrit dans [game-start.md](game-start.md). Les actions de jeu et résolutions des phases restent à implémenter.
+
+## Frontière du lot lancement
+
+Le domaine GameService décide qui peut lancer, construit le paquet et le mélange, puis prépare la projection autorisée. Le repository Prisma exécute la décision sous verrou parent et persiste le snapshot dans une transaction. La route POST retourne exclusivement la projection collective ; le rôle est lu séparément par la route personnelle.
+
+Le catalogue Role est initialisé par migration, les participants figent leur pseudonyme et leur rôle, et GamePhase conserve la nuit initiale. Aucun worker de résolution n’est présent ; les futures transitions devront fermer la phase courante avant d’en créer une autre dans la même transaction, en respectant l’index partiel d’unicité.
+
+## Vérification du lancement — 19 novembre 2026
+
+42 tests unitaires et 24 tests d'intégration réussis : compositions 6–12, droits et confidentialité, double lancement, lancement concurrent à une entrée ou un départ, rollback sur contrainte, unicité et reprise des lectures depuis les données persistées. Les deux smoke tests HTTP Docker (comptes/salons et six joueurs lançant une partie) passent également. La troisième migration est réexécutable sans changement après application.
+
+Une première exécution a révélé que le test de sessions comptait aussi des compteurs de limitation ajoutés dans le même espace Redis. Les suites utilisent maintenant des préfixes distincts pour sessions et limites, sans changement du préfixe de production ; la suite complète a ensuite réussi. Les volumes et conteneurs de test ont été supprimés après vérification.
+
+Le pilote pg 8 émet un avertissement de dépréciation sur certaines requêtes internes pendant les tests de concurrence Prisma ; il ne fait pas échouer les vérifications. Les versions restent verrouillées et la compatibilité devra être revérifiée lors d'une évolution majeure du pilote.

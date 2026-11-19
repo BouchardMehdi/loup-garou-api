@@ -67,7 +67,7 @@ export class LobbyService {
 
 // Explicit projection: no hash, invitation code, email or membership history.
 export function lobbySummary(lobby: Lobby) {
-  return { id: lobby.id, name: lobby.name, visibility: lobby.visibility, status: lobby.status,
+  return { id: lobby.id, gameId: lobby.gameId, name: lobby.name, visibility: lobby.visibility, status: lobby.status,
     capacity: lobby.capacity, memberCount: lobby.members.length, owner: lobby.owner,
     discussionDurationSeconds: lobby.discussionDurationSeconds,
     voteDurationSeconds: lobby.voteDurationSeconds, nightDurationSeconds: lobby.nightDurationSeconds,

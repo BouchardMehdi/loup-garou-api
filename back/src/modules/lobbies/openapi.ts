@@ -2,6 +2,7 @@ const ref = (name: string) => ({ $ref: `#/components/schemas/${name}` });
 const links = { type: 'object', additionalProperties: { type: 'object', properties: { href: { type: 'string' } }, required: ['href'] } };
 const duration = { type: 'integer', minimum: 30, maximum: 300 };
 const summaryProperties = {
+  gameId: { type: 'string', format: 'uuid', nullable: true },
   id: { type: 'string', format: 'uuid' }, name: { type: 'string' }, visibility: { type: 'string', enum: ['PUBLIC','PRIVATE'] },
   status: { type: 'string', enum: ['WAITING','IN_GAME','FINISHED','CLOSED'] }, capacity: { type: 'integer', minimum: 6, maximum: 12 },
   memberCount: { type: 'integer' }, owner: { type: 'object', properties: { id: { type: 'string',format: 'uuid' },username: { type: 'string' } } },

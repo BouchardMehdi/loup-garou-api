@@ -15,8 +15,8 @@ Légende : **présent** = fichier ou socle disponible ; **conçu** = documenté 
 | Hiérarchie de ressources et HAL ou JSON-LD/Hydra | HAL présent sur comptes, salons et participations ; domaine du jeu à venir | `_links`, `_embedded`, navigabilité et projections protégées |
 | Collection paginée | Salons publics paginés implémentés ; historique, messages et statistiques à venir | Pages et liens testés, bornes et ordre stable |
 | WebSocket/SSE ou RPC | Transport Socket.IO présent mais connexions applicatives refusées | Chat et événements authentifiés fonctionnels |
-| Authentification et autorisations | Comptes/sessions, profils et accès aux salons implémentés ; droits du jeu à développer | Tests de confidentialité, sessions et accès inter-parties |
-| ORM et migrations | User, Lobby, LobbyMembership et deux migrations présents ; repositories Prisma comptes/salons implémentés | Client utilisé dans les repositories, migrations versionnées et appliquées |
+| Authentification et autorisations | Comptes, salons et droits de lancement/lecture des parties implémentés ; actions et chats à développer | Tests de confidentialité, sessions et accès inter-parties |
+| ORM et migrations | Comptes, salons, rôles, parties, participants et phases initiales avec trois migrations ; repositories Prisma implémentés | Client utilisé dans les repositories, migrations versionnées et appliquées |
 | Cache des réponses d'API avec Redis | Redis provisionné ; politique de statistiques conçue | Réponse servie depuis le cache, expiration et invalidation démontrées |
 | OpenAPI interactive sur `/doc` en développement | `/doc` en développement, `/api/docs/` et contrat des comptes présents | Route demandée accessible en dev et contrat à jour |
 | Déploiement sur VPS de l'école et données de test | Guide présent ; cible confirmée ; déploiement à vérifier | Service accessible et partie démontrable avec données de test sans données personnelles réelles |
@@ -49,7 +49,7 @@ Vérifier sous charge les autorisations, l'absence de vote/fin de phase en doubl
 ## Ordre de mise en œuvre après cette branche
 
 1. Comptes/sessions et protections communes implémentés ; vérifier et maintenir le parcours complet sur chaque livraison.
-2. Salons et inscriptions livrés ; développer ensuite lancement et moteur de jeu testable indépendamment des transports.
+2. Salons, inscriptions et lancement livrés ; développer ensuite actions, résolution et victoire dans le moteur de jeu.
 3. Chats autorisés, historique, statistiques et cache.
 4. Compléter qualité, sécurité, observabilité, livraison et preuves de déploiement/charge tout au long de ces lots.
 
@@ -62,3 +62,7 @@ Le 19 novembre 2026 : 19 tests unitaires, 2 tests d'intégration PostgreSQL/Redi
 ## Preuves locales du lot salons
 
 Le 19 novembre 2026 : 26 tests unitaires et 9 tests d'intégration réussis, smoke test HTTP comptes + salons sur Docker et migration additionnelle appliquée sur une base éphémère. Les tests d'arrivées concurrentes confirment la limite de capacité et l'unicité des adhésions. Le front du collègue n'est pas modifié ni connecté aux routes par ce lot.
+
+## Preuves locales du lancement
+
+Le 19 novembre 2026 : 42 tests unitaires, 24 tests d'intégration et deux smoke tests HTTP Docker réussis. Rôles persistés, première nuit et échéance, refus d'accès hors partie, composition pour tous les effectifs autorisés et concurrence avec les inscriptions/départs sont vérifiés. Les actions et résolutions des phases ne sont pas encore fonctionnelles ; le résultat ne doit donc pas être présenté comme une partie jouable complète.

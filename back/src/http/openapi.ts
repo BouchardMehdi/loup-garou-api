@@ -1,3 +1,4 @@
+import { gamePaths, gameSchemas } from '../modules/game/openapi.js';
 import { lobbyPaths, lobbySchemas } from '../modules/lobbies/openapi.js';
 import { accountComponents, accountPaths } from '../modules/accounts/openapi.js';
 
@@ -9,11 +10,12 @@ const healthSchema = {
 export const openApiDocument = {
   openapi: '3.0.3',
   info: { title: 'Loup-Garou API', version: '0.1.0',
-    description: 'API back-end : comptes, sessions et salons disponibles. Jeu et chats à venir.' },
-  components: { ...accountComponents, schemas: lobbySchemas },
+    description: 'API back-end : Comptes, salons et lancement des parties disponibles. Actions de jeu et chats à venir.' },
+  components: { ...accountComponents, schemas: { ...lobbySchemas, ...gameSchemas } },
   paths: {
     ...accountPaths,
     ...lobbyPaths,
+    ...gamePaths,
     '/api/health': { get: { summary: 'Vérifie que le serveur HTTP répond',
       responses: { '200': { description: 'Serveur actif',
         content: { 'application/hal+json': { schema: healthSchema } } } } } },

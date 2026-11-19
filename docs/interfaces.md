@@ -1,6 +1,6 @@
 # Contrats d'interface préliminaires
 
-Statut : contrats cibles ; les routes de comptes, sessions et salons sont implémentées. Voir le [guide d’authentification](authentication.md) et le [contrat des salons](lobbies.md). Les parties et ressources de jeu restent futures ; Socket.IO refuse encore les connexions applicatives. Références : [règles](specifications.md), [MCD](data-model.md).
+Statut : contrats cibles ; les routes de comptes, sessions et salons sont implémentées. Voir le [guide d’authentification](authentication.md) et le [contrat des salons](lobbies.md). Le [lancement des parties et les lectures de rôles personnels](game-start.md) sont également implémentés ; les actions de jeu restent futures ; Socket.IO refuse encore les connexions applicatives. Références : [règles](specifications.md), [MCD](data-model.md).
 
 ## 1. Principes communs
 
@@ -12,7 +12,7 @@ Représentations de ressources et collections : `application/hal+json` avec `_li
 
 Chaque création HTTP renvoie 201 et un header `Location` ; une suppression de session ou d'appartenance réussie renvoie 204. Les lectures réussies renvoient 200. Les formes détaillées des entrées seront inscrites dans OpenAPI au moment du développement de chaque lot.
 
-## 2. Ressources HTTP — comptes et salons disponibles, parties à venir
+## 2. Ressources HTTP — comptes, salons et lancement disponibles, actions à venir
 
 | Méthode et chemin | Responsabilité | Accès et principales données |
 | --- | --- | --- |

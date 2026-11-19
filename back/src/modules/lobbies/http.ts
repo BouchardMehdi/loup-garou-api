@@ -24,7 +24,7 @@ function id(value: unknown) {
 }
 function detail(lobby: Lobby) {
   return { ...lobbySummary(lobby), members: lobby.members.map((m) => ({ userId: m.userId, username: m.username, joinedAt: m.joinedAt.toISOString() })),
-    _links: { self: { href: `/api/lobbies/${lobby.id}` }, membership: { href: `/api/lobbies/${lobby.id}/memberships/me` } } };
+    _links: { ...(lobby.gameId ? { game: { href: `/api/games/${lobby.gameId}` } } : {}), self: { href: `/api/lobbies/${lobby.id}` }, membership: { href: `/api/lobbies/${lobby.id}/memberships/me` } } };
 }
 function membership(lobby: Lobby, userId: string) {
   const member = lobby.members.find((m) => m.userId === userId);

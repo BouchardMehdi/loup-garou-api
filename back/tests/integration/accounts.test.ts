@@ -19,12 +19,13 @@ const redis = createClient({ url: process.env.REDIS_URL, socket: { connectTimeou
 redis.on('error', () => {});
 const ids: string[] = [];
 const prefix = `test:session:${randomUUID()}:`;
+const limitPrefix = prefix.replace('session', 'limit');
 beforeAll(async () => { await redis.connect(); });
 afterAll(async () => {
   try {
     if (ids.length) await prisma.user.deleteMany({ where: { id: { in: ids } } });
     if (redis.isReady) {
-      for await (const keys of redis.scanIterator({ MATCH: `${prefix}*` })) { if (keys.length) await redis.del(keys); }
+      for (const scopedPrefix of [prefix,limitPrefix]) for await (const keys of redis.scanIterator({ MATCH: `${scopedPrefix}*` })) { if (keys.length) await redis.del(keys); }
     }
   } finally {
     await prisma.$disconnect(); await pool.end();
@@ -37,7 +38,7 @@ it('persists users, normalized uniqueness, sessions and revocation in PostgreSQL
   const origin = 'http://localhost:5173';
   const app = createApp({ origin, trustProxyHops: 0, checks: { database: async () => {}, redis: async () => {} }, accounts: {
     service, sessionStore: new RedisStore({ client: redis, prefix, disableTouch: true }),
-    limiter: redisLimiter(redis), secret: 'integration-only-session-secret-at-least-32-characters',
+    limiter: redisLimiter(redis, limitPrefix), secret: 'integration-only-session-secret-at-least-32-characters',
     secureCookies: false, sameSite: 'lax', ttlSeconds: 3600, origin,
   } });
   const agent = request.agent(app);

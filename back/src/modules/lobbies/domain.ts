@@ -20,6 +20,7 @@ export interface Lobby extends LobbySettings {
   status: LobbyStatus;
   owner: { id: string; username: string };
   invitationHash: string | null;
+  gameId: string | null;
   createdAt: Date;
   members: LobbyMember[];
 }

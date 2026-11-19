@@ -5,14 +5,15 @@ Back-end multijoueur réalisé en binôme pour un cours de développement d'API.
 ## État du projet
 
 Le socle technique est exécutable : Express, Socket.IO, validation de configuration, logs JSON, documentation OpenAPI, routes de santé, tests et Docker.
-Les comptes, sessions et salons publics/privés sont implémentés. Le démarrage des parties, les rôles, votes, chats et statistiques restent à développer. Les connexions Socket.IO sont volontairement refusées jusqu'à l'ajout des sessions et autorisations.
+Les comptes, sessions et salons publics/privés sont implémentés. Le lancement des parties et les rôles initiaux sont disponibles. Les actions, changements de phase, votes, chats et statistiques restent à développer. Les connexions Socket.IO sont volontairement refusées jusqu'à l'ajout des sessions et autorisations.
 
 ## Documents de conception
 
-La première version du jeu est spécifiée ; les comptes, sessions et salons sont implémentés à ce stade. Ce dépôt développe le back-end ; le front est réalisé séparément par le collègue.
+La première version du jeu est spécifiée ; les comptes, sessions, salons et le lancement des parties sont implémentés à ce stade. Ce dépôt développe le back-end ; le front est réalisé séparément par le collègue.
 
 - [Authentification : contrat pour le front](docs/authentication.md).
 - [Salons : routes, invitations, pagination et règles de participation](docs/lobbies.md).
+- [Lancement des parties et rôles personnels](docs/game-start.md).
 
 - [Spécifications fonctionnelles et scénarios d'acceptation](docs/specifications.md).
 - [Modèle conceptuel de données (MCD)](docs/data-model.md).
@@ -41,7 +42,7 @@ project/
 |   |-- tests/
 |   |-- Dockerfile
 |   `-- package-lock.json
-|-- front/                  # réservé à une interface future
+|-- front/                  # interface Vue gérée par le collègue
 |-- deploy/nginx/
 |-- docs/
 |-- load/
@@ -77,6 +78,7 @@ L'API est publiée uniquement sur `127.0.0.1`. PostgreSQL et Redis n'ont aucun p
 - `/api/docs/` : Swagger UI ; `/doc` est également disponible en développement.
 - `/api/csrf`, `/api/users`, `/api/sessions`, `/api/me` : [parcours des comptes](docs/authentication.md).
 - `/api/lobbies` et participations : [contrat des salons](docs/lobbies.md).
+- `/api/lobbies/{id}/games`, `/api/games/{id}` et `/api/games/{id}/participants/me` : [lancement et rôles](docs/game-start.md).
 - `/api/openapi.json` : contrat OpenAPI.
 - `/socket.io/` : transport Socket.IO réservé, sans événements métier ni connexions authentifiées à ce stade.
 
@@ -119,7 +121,7 @@ Pour les tests réels sur une configuration locale isolée : `docker compose --p
 
 ## Prisma
 
-Les modèles User, Lobby et LobbyMembership et leurs migrations sont versionnés. Le client Prisma est généré avant `typecheck` et `build` ; il reste ignoré par Git. Les repositories des comptes utilisent Prisma via l'adaptateur PostgreSQL.
+Les modèles des comptes, salons, rôles, parties, participants et phases initiales et leurs migrations sont versionnés. Le client Prisma est généré avant `typecheck` et `build` ; il reste ignoré par Git. Les repositories des comptes utilisent Prisma via l'adaptateur PostgreSQL.
 
 Compose applique `prisma migrate deploy` avec le service ponctuel `migrate`, puis démarre l'API uniquement en cas de succès. Pour créer une future migration, utiliser la base de développement avec `npm run db:migrate:dev -- --name description`. Ne pas utiliser `migrate dev` ou `db push` en production.
 
@@ -145,7 +147,7 @@ Ces accès s'appliquent pendant la partie à tout moment, indépendamment du jou
 ## Travail en binôme et automatisation
 
 Les consignes Codex/Claude sont dans `AGENTS.md` et `CLAUDE.md`, dont les contenus doivent rester identiques.
-Travailler par branches et pull requests. La CI vérifie types, lint, tests, build, schéma Prisma, égalité des consignes, configuration Compose, construction de l'image et démarrage avec PostgreSQL/Redis, avec un smoke test complet des comptes.
+Travailler par branches et pull requests. La CI vérifie types, lint, tests, build, schéma Prisma, égalité des consignes, configuration Compose, construction de l'image et démarrage avec PostgreSQL/Redis, avec des smoke tests des comptes, salons et du lancement de partie.
 Un tag `v*` déclenche également les vérifications puis publie une image versionnée dans GHCR. Aucun accès au VPS ni déploiement distant automatique n'est configuré.
 
 Un premier scénario de charge HTTP est dans `load/health.js` : `k6 run load/health.js` contre une instance de test locale. Il ne couvre pas encore Socket.IO.
